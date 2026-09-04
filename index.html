@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>SmartFeed - AI Feed Quality Testing System | SIH 2026</title>
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+    <!-- ==================== NAVIGATION ==================== -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-cow"></i>
+                <span>SmartFeed</span>
+                <span class="badge">SIH 2026</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#home" class="active"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="#test"><i class="fas fa-flask"></i> Test</a></li>
+                <li><a href="#dashboard"><i class="fas fa-chart-pie"></i> Dashboard</a></li>
+                <li><a href="#advisory"><i class="fas fa-list-check"></i> Advisory</a></li>
+                <li><a href="#about"><i class="fas fa-info-circle"></i> About</a></li>
+            </ul>
+            <div class="nav-right">
+                <div class="auth-buttons" id="authButtons">
+                    <button onclick="showLoginModal()" class="btn-secondary" style="padding: 8px 20px; font-size: 0.9rem;">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </button>
+                    <button onclick="showRegisterModal()" class="btn-primary" style="padding: 8px 20px; font-size: 0.9rem;">
+                        <i class="fas fa-user-plus"></i> Register
+                    </button>
+                </div>
+                <div class="auth-buttons" id="authUserInfo" style="display: none;">
+                    <span id="userNameDisplay" style="font-weight: 600; color: var(--primary-dark);">
+                        <i class="fas fa-user-circle"></i> <span id="userNameText"></span>
+                    </span>
+                    <button onclick="logoutUser()" class="btn-secondary" style="padding: 8px 20px; font-size: 0.9rem; background: #ffcdd2; color: #c62828; border-color: #c62828;">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+                <div class="language-selector">
+                    <select id="languageSelect">
+                        <option value="en">🇬🇧 English</option>
+                        <option value="hi">🇮🇳 हिंदी</option>
+                        <option value="ta">🇮🇳 தமிழ்</option>
+                        <option value="te">🇮🇳 తెలుగు</option>
+                        <option value="mr">🇮🇳 मराठी</option>
+                    </select>
+                </div>
+                <button class="nav-toggle" id="navToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ==================== HERO SECTION ==================== -->
+    <section id="home" class="hero">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <i class="fas fa-microchip"></i> AI-Powered • Smart India Hackathon 2026
+            </div>
+            <h1>AI-Powered Portable Cattle Feed &amp; Silage Quality Intelligence</h1>
+            <p>Rapid on-field quality assessment for immediate feed-quality decisions. 
+               <span class="highlight">Results in under 5 minutes!</span></p>
+            <div class="hero-buttons">
+                <button onclick="scrollToSection('test')" class="btn-primary">
+                    <i class="fas fa-microscope"></i> Start Testing
+                </button>
+                <button onclick="scrollToSection('dashboard')" class="btn-secondary">
+                    <i class="fas fa-chart-line"></i> View Dashboard
+                </button>
+                <button onclick="autoFillWithSensorData()" class="btn-tertiary">
+                    <i class="fas fa-microchip"></i> Simulate Sensors
+                </button>
+            </div>
+            <div class="hero-stats">
+                <div class="stat-card">
+                    <i class="fas fa-clock"></i>
+                    <h3 id="statTime">5</h3>
+                    <p>Minutes Results</p>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-rupee-sign"></i>
+                    <h3>Low Cost</h3>
+                    <p>Affordable Testing</p>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-mobile-alt"></i>
+                    <h3>Portable</h3>
+                    <p>Field Ready</p>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-wifi"></i>
+                    <h3 id="connectionStatus">● Checking...</h3>
+                    <p>Cloud Sync</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== TEST SECTION ==================== -->
+    <section id="test" class="test-section">
+        <h2 class="section-title"><i class="fas fa-flask"></i> Feed Quality Testing</h2>
+        
+        <!-- Virtual Sensor Status -->
+        <div class="sensor-status-bar" id="sensorStatusBar">
+            <div class="sensor-indicator">
+                <span class="dot green"></span> Virtual Sensors Active
+            </div>
+            <div class="sensor-readings-mini">
+                <span id="miniTemp">🌡️ --°C</span>
+                <span id="miniMoisture">💧 --%</span>
+                <span id="miniPH">🧪 pH --</span>
+                <span id="miniProtein">🔬 Protein --%</span>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">
+                <span id="syncStatus">💻 Local Mode</span>
+            </div>
+        </div>
+
+        <div class="test-container">
+            <!-- Test Form -->
+            <div class="test-form">
+                <div class="test-options">
+                    <button class="test-type-btn active" data-test="feed">
+                        <i class="fas fa-seedling"></i> Feed Testing
+                    </button>
+                    <button class="test-type-btn" data-test="silage">
+                        <i class="fas fa-leaf"></i> Silage Testing
+                    </button>
+                </div>
+                
+                <form id="testForm">
+                    <div class="form-group">
+                        <label for="sampleId"><i class="fas fa-tag"></i> Sample ID</label>
+                        <input type="text" id="sampleId" placeholder="Enter sample ID or leave auto" value="AUTO">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="feedType"><i class="fas fa-list"></i> Feed Type</label>
+                        <select id="feedType" required>
+                            <option value="">Select feed type</option>
+                            <option value="cattle">Cattle Feed Pellet</option>
+                            <option value="silage">Silage</option>
+                            <option value="fodder">Green Fodder</option>
+                            <option value="concentrate">Concentrate Mix</option>
+                            <option value="mineral">Mineral Mixture</option>
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="moisture"><i class="fas fa-water"></i> Moisture (%)</label>
+                            <input type="number" id="moisture" step="0.1" placeholder="e.g., 12.5">
+                        </div>
+                        <div class="form-group">
+                            <label for="protein"><i class="fas fa-egg"></i> Crude Protein (%)</label>
+                            <input type="number" id="protein" step="0.1" placeholder="e.g., 18.5">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="fiber"><i class="fas fa-seedling"></i> Fiber Content (%)</label>
+                            <input type="number" id="fiber" step="0.1" placeholder="e.g., 15.0">
+                        </div>
+                        <div class="form-group">
+                            <label for="energy"><i class="fas fa-bolt"></i> Energy Value (MJ/kg)</label>
+                            <input type="number" id="energy" step="0.01" placeholder="e.g., 12.5">
+                        </div>
+                    </div>
+
+                    <!-- Silage Specific Fields -->
+                    <div id="silageFields" style="display: none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="ph"><i class="fas fa-vial"></i> pH Level</label>
+                                <input type="number" id="ph" step="0.1" placeholder="e.g., 4.5">
+                            </div>
+                            <div class="form-group">
+                                <label for="fermentation"><i class="fas fa-flask"></i> Fermentation Quality</label>
+                                <select id="fermentation">
+                                    <option value="">Select quality</option>
+                                    <option value="excellent">Excellent</option>
+                                    <option value="good">Good</option>
+                                    <option value="fair">Fair</option>
+                                    <option value="poor">Poor</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" onclick="autoFillWithSensorData()" class="btn-secondary">
+                            <i class="fas fa-microchip"></i> Auto-Fill from Virtual Sensors
+                        </button>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-microscope"></i> Analyze Sample
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Test Results -->
+            <div class="test-results" id="testResults" style="display: none;">
+                <div class="results-header">
+                    <h3><i class="fas fa-chart-bar"></i> Analysis Results</h3>
+                    <span class="result-timestamp" id="resultTimestamp"></span>
+                </div>
+                <div id="resultsContent"></div>
+                <div class="advisory-box" id="advisoryBox">
+                    <h4><i class="fas fa-lightbulb"></i> Advisory</h4>
+                    <p id="advisoryText">Loading advisory...</p>
+                </div>
+                <div class="result-actions">
+                    <button onclick="printResults()" class="btn-secondary">
+                        <i class="fas fa-print"></i> Print Results
+                    </button>
+                    <button onclick="saveResult()" class="btn-secondary">
+                        <i class="fas fa-save"></i> Save Result
+                    </button>
+                    <button onclick="shareResult()" class="btn-secondary">
+                        <i class="fas fa-share-alt"></i> Share
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== DASHBOARD SECTION ==================== -->
+    <section id="dashboard" class="dashboard-section">
+        <h2 class="section-title"><i class="fas fa-chart-pie"></i> Live Dashboard</h2>
+        <div class="dashboard-grid">
+            <div class="dashboard-card">
+                <h3>Quality Distribution</h3>
+                <div class="chart-container">
+                    <canvas id="qualityChart"></canvas>
+                </div>
+            </div>
+            <div class="dashboard-card">
+                <h3>Key Metrics</h3>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <span class="metric-value" id="totalTests">0</span>
+                        <span class="metric-label">Total Tests</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-value" id="avgProtein">0%</span>
+                        <span class="metric-label">Avg Protein</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-value" id="avgMoisture">0%</span>
+                        <span class="metric-label">Avg Moisture</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-value" id="qualityScore">0%</span>
+                        <span class="metric-label">Overall Quality</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-value" id="goodCount">0</span>
+                        <span class="metric-label">Good Quality</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-value" id="unsafeCount">0</span>
+                        <span class="metric-label">Unsafe</span>
+                    </div>
+                </div>
+            </div>
+            <div class="dashboard-card full-width">
+                <h3>Recent Tests</h3>
+                <div id="recentTests">
+                    <p class="text-muted">No tests conducted yet. Start testing!</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== ADVISORY SECTION ==================== -->
+    <section id="advisory" class="advisory-section">
+        <h2 class="section-title"><i class="fas fa-list-check"></i> Feed Advisories</h2>
+        <div class="advisory-grid">
+            <div class="advisory-card">
+                <i class="fas fa-water"></i>
+                <h3>Moisture Management</h3>
+                <p>Optimal levels: 10-12% for feed, 40-60% for silage</p>
+                <span class="status status-good">Good</span>
+            </div>
+            <div class="advisory-card">
+                <i class="fas fa-egg"></i>
+                <h3>Protein Requirements</h3>
+                <p>18-22% crude protein recommended for lactating cattle</p>
+                <span class="status status-warning">Monitor</span>
+            </div>
+            <div class="advisory-card">
+                <i class="fas fa-seedling"></i>
+                <h3>Fiber Content</h3>
+                <p>15-18% fiber for optimal rumen function</p>
+                <span class="status status-good">Good</span>
+            </div>
+            <div class="advisory-card">
+                <i class="fas fa-biohazard"></i>
+                <h3>Contamination Alert</h3>
+                <p>Regular monitoring for aflatoxins and mycotoxins</p>
+                <span class="status status-danger">Alert</span>
+            </div>
+            <div class="advisory-card">
+                <i class="fas fa-temperature-high"></i>
+                <h3>Storage Conditions</h3>
+                <p>Store in cool, dry place below 25°C</p>
+                <span class="status status-warning">Monitor</span>
+            </div>
+            <div class="advisory-card">
+                <i class="fas fa-clock"></i>
+                <h3>Feeding Schedule</h3>
+                <p>Fresh feed twice daily, check for spoilage</p>
+                <span class="status status-good">Good</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== ABOUT SECTION ==================== -->
+    <section id="about" class="about-section">
+        <h2 class="section-title"><i class="fas fa-info-circle"></i> About SmartFeed</h2>
+        <div class="about-content">
+            <div class="about-grid">
+                <div class="about-card">
+                    <h3><i class="fas fa-bullseye"></i> Mission</h3>
+                    <p>To empower dairy farmers with affordable, rapid, and accurate feed quality testing using AI and sensor technology.</p>
+                </div>
+                <div class="about-card">
+                    <h3><i class="fas fa-cogs"></i> Technology</h3>
+                    <ul>
+                        <li>🧠 AI/ML for quality prediction</li>
+                        <li>📱 Mobile-first web application</li>
+                        <li>☁️ Cloud analytics & storage</li>
+                        <li>🔬 Virtual sensor simulation</li>
+                        <li>🌐 Multilingual support</li>
+                    </ul>
+                </div>
+                <div class="about-card">
+                    <h3><i class="fas fa-users"></i> Team</h3>
+                    <p>Smart India Hackathon 2026<br>
+                    Problem Statement: SIH26111<br>
+                    Theme: Agriculture, FoodTech & Rural Development</p>
+                </div>
+                <div class="about-card">
+                    <h3><i class="fas fa-trophy"></i> Impact</h3>
+                    <ul>
+                        <li>✅ Reduce dependency on labs</li>
+                        <li>✅ Rapid on-field testing</li>
+                        <li>✅ Early quality risk detection</li>
+                        <li>✅ Simple farmer advisories</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== LOGIN MODAL ==================== -->
+    <div id="loginModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 30px; border-radius: 16px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <h3 style="margin-bottom: 20px; color: var(--primary-dark);"><i class="fas fa-sign-in-alt" style="color: var(--primary);"></i> Login</h3>
+            <input type="text" id="loginUsername" placeholder="Username" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="password" id="loginPassword" placeholder="Password" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <button onclick="handleLogin()" class="btn-primary" style="width: 100%; justify-content: center;">Login</button>
+            <button onclick="closeLoginModal()" style="width: 100%; margin-top: 10px; padding: 12px; border: none; background: #f5f5f5; border-radius: 8px; cursor: pointer; font-weight: 600;">Cancel</button>
+        </div>
+    </div>
+
+    <!-- ==================== REGISTER MODAL ==================== -->
+    <div id="registerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 30px; border-radius: 16px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <h3 style="margin-bottom: 20px; color: var(--primary-dark);"><i class="fas fa-user-plus" style="color: var(--primary);"></i> Register</h3>
+            <input type="text" id="regUsername" placeholder="Username *" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="email" id="regEmail" placeholder="Email *" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="text" id="regFullName" placeholder="Full Name" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="password" id="regPassword" placeholder="Password *" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <button onclick="handleRegister()" class="btn-primary" style="width: 100%; justify-content: center;">Register</button>
+            <button onclick="closeRegisterModal()" style="width: 100%; margin-top: 10px; padding: 12px; border: none; background: #f5f5f5; border-radius: 8px; cursor: pointer; font-weight: 600;">Cancel</button>
+        </div>
+    </div>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4><i class="fas fa-cow"></i> SmartFeed</h4>
+                <p>AI-Powered Portable Cattle Feed &amp; Silage Quality Intelligence</p>
+                <p><small>Smart India Hackathon 2026 - SIH26111</small></p>
+                <div class="social-links">
+                    <a href="#"><i class="fab fa-github"></i></a>
+                    <a href="#"><i class="fab fa-linkedin"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-youtube"></i></a>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h4>Quick Links</h4>
+                <ul>
+                    <li><a href="#home">Home</a></li>
+                    <li><a href="#test">Test Feed</a></li>
+                    <li><a href="#dashboard">Dashboard</a></li>
+                    <li><a href="#advisory">Advisory</a></li>
+                    <li><a href="#about">About</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Technologies</h4>
+                <ul>
+                    <li>🧠 AI/ML</li>
+                    <li>📡 IoT Sensors</li>
+                    <li>🔬 NIR Spectroscopy</li>
+                    <li>☁️ Cloud Analytics</li>
+                    <li>📱 Mobile App</li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Contact</h4>
+                <p><i class="fas fa-envelope"></i> team@smartfeed.in</p>
+                <p><i class="fas fa-phone"></i> +91-XXXXX-XXXXX</p>
+                <p><i class="fas fa-map-marker-alt"></i> India</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 SmartFeed - SIH26111. All rights reserved. | Made with ❤️ for Indian Dairy Farmers</p>
+        </div>
+    </footer>
+
+    <!-- Custom JavaScript -->
+    <script src="js/main.js"></script>
+</body>
+</html>
