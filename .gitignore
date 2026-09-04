@@ -1,0 +1,57 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyc
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# AI/ML model files (large files)
+*.pkl
+*.h5
+*.model
+*.weights
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Uploads
+uploads/
+media/
+
+# Environment variables
+.env
+.env.local
+
+# Node modules (if using Node.js)
+node_modules/
+npm-debug.log
+
+# Compiled files
+*.exe
+*.dll
+*.so
+*.dylib
