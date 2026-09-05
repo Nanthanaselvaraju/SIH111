@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>About - SmartFeed</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-cow"></i>
+                <span>DiaryLens</span>
+                <span class="badge">SIH 2026</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" data-i18n="nav_home"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="test.html" data-i18n="nav_test"><i class="fas fa-flask"></i> Test</a></li>
+                <li><a href="dashboard.html" data-i18n="nav_dashboard"><i class="fas fa-chart-pie"></i> Dashboard</a></li>
+                <li><a href="reports.html" data-i18n="nav_advisory"><i class="fas fa-list-check"></i> Advisory</a></li>
+                <li><a href="about.html" class="active" data-i18n="nav_about"><i class="fas fa-info-circle"></i> About</a></li>
+            </ul>
+            <div class="nav-right">
+                <div class="auth-buttons" id="authButtons">
+                    <button onclick="showLoginModal()" class="btn-secondary" style="padding: 8px 20px; font-size: 0.9rem;">
+                        <i class="fas fa-sign-in-alt"></i> <span data-i18n="login">Login</span>
+                    </button>
+                    <button onclick="showRegisterModal()" class="btn-primary" style="padding: 8px 20px; font-size: 0.9rem;">
+                        <i class="fas fa-user-plus"></i> <span data-i18n="register">Register</span>
+                    </button>
+                </div>
+                <div class="auth-buttons" id="authUserInfo" style="display: none;">
+                    <span id="userNameDisplay" style="font-weight: 600; color: var(--primary-dark);">
+                        <i class="fas fa-user-circle"></i> <span id="userNameText"></span>
+                    </span>
+                    <button onclick="logoutUser()" class="btn-secondary" style="padding: 8px 20px; font-size: 0.9rem; background: #ffcdd2; color: #c62828; border-color: #c62828;">
+                        <i class="fas fa-sign-out-alt"></i> <span data-i18n="logout">Logout</span>
+                    </button>
+                </div>
+                <div class="language-selector">
+                    <select id="languageSelect">
+                        <option value="en">🇬🇧 English</option>
+                        <option value="hi">🇮🇳 हिंदी</option>
+                        <option value="ta">🇮🇳 தமிழ்</option>
+                        <option value="te">🇮🇳 తెలుగు</option>
+                        <option value="mr">🇮🇳 मराठी</option>
+                    </select>
+                </div>
+                <button class="nav-toggle" id="navToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <section id="about" class="about-section">
+        <h2 class="section-title"><i class="fas fa-info-circle"></i> <span data-i18n="about_title">About SmartFeed</span></h2>
+        <div class="about-content">
+            <div class="about-grid">
+                <div class="about-card">
+                    <h3><i class="fas fa-bullseye"></i> <span data-i18n="about_mission">Mission</span></h3>
+                    <p data-i18n="about_mission_text">To empower dairy farmers with affordable, rapid, and accurate feed quality testing using AI and sensor technology.</p>
+                </div>
+                <div class="about-card">
+                    <h3><i class="fas fa-cogs"></i> <span data-i18n="about_technology">Technology</span></h3>
+                    <ul>
+                        <li>🧠 AI/ML for quality prediction</li>
+                        <li>📱 Mobile-first web application</li>
+                        <li>☁️ Cloud analytics & storage</li>
+                        <li>🔬 Virtual sensor simulation</li>
+                        <li>🌐 Multilingual support</li>
+                    </ul>
+                </div>
+                <div class="about-card">
+                    <h3><i class="fas fa-users"></i> <span data-i18n="about_team">Team</span></h3>
+                    <p>Smart India Hackathon 2026<br>
+                    Problem Statement: SIH26111<br>
+                    Theme: Agriculture, FoodTech & Rural Development</p>
+                </div>
+                <div class="about-card">
+                    <h3><i class="fas fa-trophy"></i> <span data-i18n="about_impact">Impact</span></h3>
+                    <ul>
+                        <li>✅ Reduce dependency on labs</li>
+                        <li>✅ Rapid on-field testing</li>
+                        <li>✅ Early quality risk detection</li>
+                        <li>✅ Simple farmer advisories</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- LOGIN / REGISTER MODALS -->
+    <div id="loginModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 30px; border-radius: 16px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <h3 style="margin-bottom: 20px; color: var(--primary-dark);"><i class="fas fa-sign-in-alt" style="color: var(--primary);"></i> Login</h3>
+            <input type="text" id="loginUsername" placeholder="Username" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="password" id="loginPassword" placeholder="Password" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <button onclick="handleLogin()" class="btn-primary" style="width: 100%; justify-content: center;">Login</button>
+            <button onclick="closeLoginModal()" style="width: 100%; margin-top: 10px; padding: 12px; border: none; background: #f5f5f5; border-radius: 8px; cursor: pointer; font-weight: 600;">Cancel</button>
+        </div>
+    </div>
+
+    <div id="registerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 30px; border-radius: 16px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <h3 style="margin-bottom: 20px; color: var(--primary-dark);"><i class="fas fa-user-plus" style="color: var(--primary);"></i> Register</h3>
+            <input type="text" id="regUsername" placeholder="Username *" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="email" id="regEmail" placeholder="Email *" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="text" id="regFullName" placeholder="Full Name" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="password" id="regPassword" placeholder="Password *" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <button onclick="handleRegister()" class="btn-primary" style="width: 100%; justify-content: center;">Register</button>
+            <button onclick="closeRegisterModal()" style="width: 100%; margin-top: 10px; padding: 12px; border: none; background: #f5f5f5; border-radius: 8px; cursor: pointer; font-weight: 600;">Cancel</button>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4><i class="fas fa-cow"></i> SmartFeed</h4>
+                <p>AI-Powered Portable Cattle Feed &amp; Silage Quality Intelligence</p>
+                <p><small>Smart India Hackathon 2026 - SIH26111</small></p>
+                <div class="social-links">
+                    <a href="#"><i class="fab fa-github"></i></a>
+                    <a href="#"><i class="fab fa-linkedin"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-youtube"></i></a>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h4>Quick Links</h4>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="test.html">Test Feed</a></li>
+                    <li><a href="dashboard.html">Dashboard</a></li>
+                    <li><a href="reports.html">Advisory</a></li>
+                    <li><a href="about.html">About</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Technologies</h4>
+                <ul>
+                    <li>🧠 AI/ML</li>
+                    <li>📡 IoT Sensors</li>
+                    <li>🔬 NIR Spectroscopy</li>
+                    <li>☁️ Cloud Analytics</li>
+                    <li>📱 Mobile App</li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Contact</h4>
+                <p><i class="fas fa-envelope"></i> team@smartfeed.in</p>
+                <p><i class="fas fa-phone"></i> +91-XXXXX-XXXXX</p>
+                <p><i class="fas fa-map-marker-alt"></i> India</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 SmartFeed - SIH26111. All rights reserved. | Made with ❤️ for Indian Dairy Farmers</p>
+        </div>
+    </footer>
+
+    <script src="js/languages.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

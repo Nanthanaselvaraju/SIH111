@@ -11,6 +11,9 @@
 const API_URL = 'http://localhost:5000/api';
 let authToken = localStorage.getItem('authToken') || null;
 
+// Helper to safely get elements on multi-page layout
+function getEl(id) { return document.getElementById(id); }
+
 // Register User
 async function registerUser(username, email, password, fullName) {
     try {
@@ -152,40 +155,56 @@ async function loadUserTests() {
 
 // Update dashboard from cloud data
 function updateDashboardFromCloud(stats) {
-    document.getElementById('totalTests').textContent = stats.total_tests || 0;
-    document.getElementById('avgProtein').textContent = (stats.averages?.protein || 0) + '%';
-    document.getElementById('avgMoisture').textContent = (stats.averages?.moisture || 0) + '%';
-    document.getElementById('qualityScore').textContent = (stats.averages?.score || 0) + '%';
-    
+    const totalTestsEl = getEl('totalTests');
+    const avgProteinEl = getEl('avgProtein');
+    const avgMoistureEl = getEl('avgMoisture');
+    const qualityScoreEl = getEl('qualityScore');
+    const goodCountEl = getEl('goodCount');
+    const unsafeCountEl = getEl('unsafeCount');
+
+    if (totalTestsEl) totalTestsEl.textContent = stats.total_tests || 0;
+    if (avgProteinEl) avgProteinEl.textContent = (stats.averages?.protein || 0) + '%';
+    if (avgMoistureEl) avgMoistureEl.textContent = (stats.averages?.moisture || 0) + '%';
+    if (qualityScoreEl) qualityScoreEl.textContent = (stats.averages?.score || 0) + '%';
+
     const dist = stats.quality_distribution || {};
-    document.getElementById('goodCount').textContent = dist.Good || 0;
-    document.getElementById('unsafeCount').textContent = (dist.Poor || 0) + (dist.Unsafe || 0);
-    
+    if (goodCountEl) goodCountEl.textContent = dist.Good || 0;
+    if (unsafeCountEl) unsafeCountEl.textContent = (dist.Poor || 0) + (dist.Unsafe || 0);
+
     if (stats.recent_tests && stats.recent_tests.length > 0) {
-        const container = document.getElementById('recentTests');
-        container.innerHTML = stats.recent_tests.map(test => `
-            <div class="recent-test-item">
-                <span class="test-id">${test.sample_id}</span>
-                <span>💧 ${test.moisture}% | 🔬 ${test.protein}%</span>
-                <span class="test-quality status status-${test.quality_label.toLowerCase()}">
-                    ${test.quality_label}
-                </span>
-                <span style="font-size:0.75rem;color:#888;">
-                    ${new Date(test.timestamp).toLocaleTimeString()}
-                </span>
-                <span style="font-size:0.7rem;color:#4caf50;">☁️</span>
-            </div>
-        `).join('');
+        const container = getEl('recentTests');
+        if (container) {
+            container.innerHTML = stats.recent_tests.map(test => `
+                <div class="recent-test-item">
+                    <span class="test-id">${test.sample_id}</span>
+                    <span>💧 ${test.moisture}% | 🔬 ${test.protein}%</span>
+                    <span class="test-quality status status-${test.quality_label.toLowerCase()}">
+                        ${test.quality_label}
+                    </span>
+                    <span style="font-size:0.75rem;color:#888;">
+                        ${new Date(test.timestamp).toLocaleTimeString()}
+                    </span>
+                    <span style="font-size:0.7rem;color:#4caf50;">☁️</span>
+                </div>
+            `).join('');
+        }
     }
 }
 
 // Update UI for logged in user
 function updateUIForLoggedInUser(user) {
-    document.getElementById('authButtons').style.display = 'none';
-    document.getElementById('authUserInfo').style.display = 'flex';
-    document.getElementById('userNameText').textContent = user.full_name || user.username;
-    document.getElementById('syncStatus').innerHTML = '☁️ Cloud Sync Active';
-    document.getElementById('syncStatus').style.color = '#4caf50';
+    const authButtons = getEl('authButtons');
+    const authUserInfo = getEl('authUserInfo');
+    const userNameText = getEl('userNameText');
+    const syncStatus = getEl('syncStatus');
+
+    if (authButtons) authButtons.style.display = 'none';
+    if (authUserInfo) authUserInfo.style.display = 'flex';
+    if (userNameText) userNameText.textContent = user.full_name || user.username;
+    if (syncStatus) {
+        syncStatus.innerHTML = '☁️ Cloud Sync Active';
+        syncStatus.style.color = '#4caf50';
+    }
 }
 
 // Check if user is logged in on page load
@@ -197,8 +216,11 @@ function checkAuthStatus() {
         console.log('✅ User already logged in:', user.username);
         loadUserTests();
     } else {
-        document.getElementById('syncStatus').innerHTML = '💻 Local Mode - Login to sync';
-        document.getElementById('syncStatus').style.color = '#ff9800';
+        const syncStatus = getEl('syncStatus');
+        if (syncStatus) {
+            syncStatus.innerHTML = '💻 Local Mode - Login to sync';
+            syncStatus.style.color = '#ff9800';
+        }
     }
 }
 
@@ -260,14 +282,20 @@ if (typeof io === 'function') {
 
     socket.on('connect', function() {
         console.log('✅ WebSocket Connected!');
-        document.getElementById('connectionStatus').textContent = '● Online';
-        document.getElementById('connectionStatus').style.color = '#4caf50';
+        const connEl = getEl('connectionStatus');
+        if (connEl) {
+            connEl.textContent = '● Online';
+            connEl.style.color = '#4caf50';
+        }
     });
 
     socket.on('disconnect', function() {
         console.log('❌ WebSocket Disconnected');
-        document.getElementById('connectionStatus').textContent = '● Offline';
-        document.getElementById('connectionStatus').style.color = '#f44336';
+        const connEl = getEl('connectionStatus');
+        if (connEl) {
+            connEl.textContent = '● Offline';
+            connEl.style.color = '#f44336';
+        }
     });
 
     socket.on('new_test', function(data) {
@@ -588,13 +616,18 @@ const sensorSim = new SensorSimulator();
 // Updated autoFillWithSensorData with backend check
 async function autoFillWithSensorData() {
     const data = sensorSim.getSingleReading();
-    
-    document.getElementById('moisture').value = data.moisture;
-    document.getElementById('protein').value = data.protein;
-    document.getElementById('fiber').value = data.fiber;
-    document.getElementById('ph').value = data.ph;
-    document.getElementById('energy').value = data.energy;
-    
+    const moistureEl = getEl('moisture');
+    const proteinEl = getEl('protein');
+    const fiberEl = getEl('fiber');
+    const phEl = getEl('ph');
+    const energyEl = getEl('energy');
+
+    if (moistureEl) moistureEl.value = data.moisture;
+    if (proteinEl) proteinEl.value = data.protein;
+    if (fiberEl) fiberEl.value = data.fiber;
+    if (phEl) phEl.value = data.ph;
+    if (energyEl) energyEl.value = data.energy;
+
     updateSensorStatus(data);
     
     const btn = document.querySelector('[onclick="autoFillWithSensorData()"]');
@@ -615,15 +648,24 @@ async function autoFillWithSensorData() {
         const response = await fetch('http://localhost:5000/health');
         if (response.ok) {
             console.log('✅ Backend is connected!');
-            document.getElementById('connectionStatus').textContent = '● Online';
-            document.getElementById('connectionStatus').style.color = '#4caf50';
+            const connEl = getEl('connectionStatus');
+            if (connEl) {
+                connEl.textContent = '● Online';
+                connEl.style.color = '#4caf50';
+            }
         }
     } catch (error) {
         console.log('⚠️ Backend not running. Using local mode.');
-        document.getElementById('connectionStatus').textContent = '● Offline';
-        document.getElementById('connectionStatus').style.color = '#f44336';
-        document.getElementById('syncStatus').innerHTML = '💻 Offline Mode';
-        document.getElementById('syncStatus').style.color = '#f44336';
+        const connEl = getEl('connectionStatus');
+        if (connEl) {
+            connEl.textContent = '● Offline';
+            connEl.style.color = '#f44336';
+        }
+        const syncStatus = getEl('syncStatus');
+        if (syncStatus) {
+            syncStatus.innerHTML = '💻 Offline Mode';
+            syncStatus.style.color = '#f44336';
+        }
     }
 }
 
@@ -740,7 +782,9 @@ document.querySelectorAll('.test-type-btn').forEach(btn => {
 });
 
 // Updated form submission with backend integration
-document.getElementById('testForm').addEventListener('submit', async function(e) {
+const _testForm = getEl('testForm');
+if (_testForm) {
+    _testForm.addEventListener('submit', async function(e) {
     e.preventDefault();
     
     const formData = {
@@ -822,8 +866,10 @@ document.getElementById('testForm').addEventListener('submit', async function(e)
         contamination: result.contamination || 'None'
     });
     
-    document.getElementById('testResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
-});
+    const resultsEl = getEl('testResults');
+    if (resultsEl) resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+}
 
 // ============================================
 // FEED ANALYSIS ENGINE
@@ -1071,8 +1117,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     sensorSim.startSimulation((data) => {
         updateSensorStatus(data);
-        document.getElementById('connectionStatus').textContent = '● Online';
-        document.getElementById('connectionStatus').style.color = '#4caf50';
+        const connEl = getEl('connectionStatus');
+        if (connEl) {
+            connEl.textContent = '● Online';
+            connEl.style.color = '#4caf50';
+        }
     }, 3000);
     
     setTimeout(() => {
@@ -1083,32 +1132,128 @@ document.addEventListener('DOMContentLoaded', function() {
         sensorSim.updateRecentTests();
     }, 1000);
     
-    document.getElementById('connectionStatus').textContent = '● Connecting...';
-    document.getElementById('connectionStatus').style.color = '#ff9800';
+    const connElInit = getEl('connectionStatus');
+    if (connElInit) {
+        connElInit.textContent = '● Connecting...';
+        connElInit.style.color = '#ff9800';
+    }
     
     // Check backend
     setTimeout(async () => {
         try {
             const response = await fetch('http://localhost:5000/health');
             if (response.ok) {
-                document.getElementById('connectionStatus').textContent = '● Online';
-                document.getElementById('connectionStatus').style.color = '#4caf50';
+                const connEl2 = getEl('connectionStatus');
+                if (connEl2) {
+                    connEl2.textContent = '● Online';
+                    connEl2.style.color = '#4caf50';
+                }
             }
         } catch {
-            document.getElementById('connectionStatus').textContent = '● Offline';
-            document.getElementById('connectionStatus').style.color = '#f44336';
+            const connEl3 = getEl('connectionStatus');
+            if (connEl3) {
+                connEl3.textContent = '● Offline';
+                connEl3.style.color = '#f44336';
+            }
         }
     }, 2000);
     
     checkAuthStatus();
     
     // Close modals on outside click
-    document.getElementById('loginModal').addEventListener('click', function(e) {
-        if (e.target === this) closeLoginModal();
+    const loginModalEl = getEl('loginModal');
+    if (loginModalEl) {
+        loginModalEl.addEventListener('click', function(e) {
+            if (e.target === this) closeLoginModal();
+        });
+    }
+    const registerModalEl = getEl('registerModal');
+    if (registerModalEl) {
+        registerModalEl.addEventListener('click', function(e) {
+            if (e.target === this) closeRegisterModal();
+        });
+    }
+
+    // ----- Input Selection UI (optional inputs) -----
+    const selectedInputs = new Set();
+
+    function updateAvailableInputsDisplay() {
+        const listEl = getEl('availableInputsList');
+        if (!listEl) return;
+        if (selectedInputs.size === 0) {
+            listEl.textContent = 'None';
+        } else {
+            listEl.textContent = Array.from(selectedInputs).map(s => s.toUpperCase()).join(', ');
+        }
+    }
+
+    function toggleInputCard(el, inputType) {
+        if (!el) return;
+        const wrapper = getEl('detailsFormWrapper');
+        if (el.classList.contains('selected')) {
+            el.classList.remove('selected');
+            selectedInputs.delete(inputType);
+            if (inputType === 'details' && wrapper) wrapper.style.display = 'none';
+        } else {
+            el.classList.add('selected');
+            selectedInputs.add(inputType);
+            if (inputType === 'details' && wrapper) wrapper.style.display = 'block';
+        }
+        updateAvailableInputsDisplay();
+    }
+
+    const cardIds = ['inputCardImage','inputCardDetails','inputCardQR','inputCardHardware'];
+    cardIds.forEach(id => {
+        const el = getEl(id);
+        if (el) {
+            el.addEventListener('click', function(e) {
+                // prevent clicks on inner controls from toggling twice
+                if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+                toggleInputCard(el, el.dataset.input);
+            });
+        }
     });
-    document.getElementById('registerModal').addEventListener('click', function(e) {
-        if (e.target === this) closeRegisterModal();
-    });
+
+    const imageUpload = getEl('imageUpload');
+    if (imageUpload) {
+        imageUpload.addEventListener('change', function() {
+            if (this.files && this.files.length > 0) {
+                const imgCard = getEl('inputCardImage');
+                if (imgCard && !imgCard.classList.contains('selected')) toggleInputCard(imgCard, 'image');
+                showToast('✅ Image selected: ' + this.files[0].name);
+            }
+        });
+    }
+
+    const analyzeBtn = getEl('analyzeSelectedBtn');
+    if (analyzeBtn) {
+        analyzeBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const selected = Array.from(selectedInputs);
+            if (selected.length === 0) {
+                alert('Please select at least one input type to analyze.');
+                return;
+            }
+
+            // Show temporary message with selected inputs
+            const message = 'Selected inputs: ' + selected.map(s => s.toUpperCase()).join(', ');
+            showToast(message);
+
+            // Also display in results area for user visibility (no fake analysis)
+            const resultsDiv = getEl('testResults');
+            const contentDiv = getEl('resultsContent');
+            if (resultsDiv && contentDiv) {
+                resultsDiv.style.display = 'block';
+                contentDiv.innerHTML = `
+                    <div class="result-item" style="border-bottom:none;">
+                        <strong>Selected Inputs</strong>
+                        <div style="margin-top:8px; font-weight:700; color:var(--primary-dark);">${selected.map(s => s.toUpperCase()).join(', ')}</div>
+                    </div>
+                    <div style="margin-top:12px; color:var(--text-muted);">Note: Analysis will use only the selected inputs. Actual AI/QR/Hardware processing is not performed in this demo.</div>
+                `;
+            }
+        });
+    }
     
     setInterval(() => {
         const statTime = document.getElementById('statTime');
