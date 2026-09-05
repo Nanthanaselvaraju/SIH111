@@ -44,57 +44,86 @@ def get_me():
 @app.route('/api/test', methods=['POST'])
 @jwt_required()
 def create_test():
-    user_id = get_jwt_identity()
-    data = request.get_json()
-    
-    # Get AI prediction
-    prediction = ai_model.predict_quality(
-        moisture=float(data.get('moisture', 0)),
-        protein=float(data.get('protein', 0)),
-        fiber=float(data.get('fiber', 0)),
-        ph=float(data.get('ph', 7.0)),
-        energy=float(data.get('energy', 11.5))
-    )
-    
-    sample_id = f"TEST-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
-    
-    test = FeedTest(
-        sample_id=sample_id,
-        user_id=user_id,
-        feed_type=data.get('feed_type', 'cattle'),
-        moisture=float(data.get('moisture', 0)),
-        protein=float(data.get('protein', 0)),
-        fiber=float(data.get('fiber', 0)),
-        energy=float(data.get('energy', 0)),
-        ph=float(data.get('ph', 7.0)),
-        aflatoxin=float(data.get('aflatoxin', 0)),
-        quality_score=prediction['score'],
-        quality_label=prediction['quality'],
-        contamination=data.get('contamination', 'None'),
-        advisory=prediction['analysis']['advisory'],
-        recommendations=json.dumps(prediction['analysis']['recommendations'])
-    )
-    
-    db.session.add(test)
-    db.session.commit()
-    
-    return jsonify({
-        'message': 'Test created successfully',
-        'test': test.to_dict(),
-        'prediction': prediction
-    }), 201
+    try:
+        raw_user_id = get_jwt_identity()
+        user_id = int(raw_user_id) if raw_user_id is not None else None
+        if user_id is None:
+            return jsonify({'error': 'JWT identity missing. User is not authenticated.'}), 401
+
+        data = request.get_json(silent=True)
+        if data is None:
+            return jsonify({'error': 'Request body must be valid JSON.'}), 400
+
+        moisture = float(data.get('moisture', 0))
+        protein = float(data.get('protein', 0))
+        fiber = float(data.get('fiber', 0))
+        ph = float(data.get('ph', 7.0))
+        energy = float(data.get('energy', 11.5))
+
+        prediction = ai_model.predict_quality(
+            moisture=moisture,
+            protein=protein,
+            fiber=fiber,
+            ph=ph,
+            energy=energy
+        )
+
+        if not isinstance(prediction, dict) or 'quality' not in prediction or 'analysis' not in prediction:
+            raise ValueError(f"Unexpected AI prediction payload: {prediction!r}")
+
+        sample_id = f"TEST-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
+
+        test = FeedTest(
+            sample_id=sample_id,
+            user_id=user_id,
+            feed_type=data.get('feed_type', 'cattle'),
+            moisture=moisture,
+            protein=protein,
+            fiber=fiber,
+            energy=energy,
+            ph=ph,
+            aflatoxin=float(data.get('aflatoxin', 0)),
+            quality_score=prediction['score'],
+            quality_label=prediction['quality'],
+            contamination=data.get('contamination', 'None'),
+            advisory=prediction['analysis']['advisory'],
+            recommendations=json.dumps(prediction['analysis'].get('recommendations', []))
+        )
+
+        db.session.add(test)
+        db.session.commit()
+
+        return jsonify({
+            'message': 'Test created successfully',
+            'test': test.to_dict(),
+            'prediction': prediction
+        }), 201
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.exception('POST /api/test failed while saving FeedTest')
+        return jsonify({
+            'error': 'Test analysis succeeded but the backend save failed.',
+            'details': str(exc)
+        }), 500
 
 @app.route('/api/tests', methods=['GET'])
 @jwt_required()
 def get_tests():
-    user_id = get_jwt_identity()
+    raw_user_id = get_jwt_identity()
+    user_id = int(raw_user_id) if raw_user_id is not None else None
+    if user_id is None:
+        return jsonify({'error': 'Missing user identity in token'}), 401
+
     tests = FeedTest.query.filter_by(user_id=user_id).order_by(FeedTest.timestamp.desc()).all()
     return jsonify({'tests': [t.to_dict() for t in tests]}), 200
 
 @app.route('/api/dashboard/stats', methods=['GET'])
 @jwt_required()
 def get_dashboard_stats():
-    user_id = get_jwt_identity()
+    raw_user_id = get_jwt_identity()
+    user_id = int(raw_user_id) if raw_user_id is not None else None
+    if user_id is None:
+        return jsonify({'error': 'Missing user identity in token'}), 401
     
     total_tests = FeedTest.query.filter_by(user_id=user_id).count()
     

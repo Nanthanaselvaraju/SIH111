@@ -47,8 +47,8 @@ def login_user():
     if not user or not bcrypt.check_password_hash(user.password_hash, data['password']):
         return jsonify({'error': 'Invalid credentials'}), 401
     
-    access_token = create_access_token(identity=user.id)
-    refresh_token = create_refresh_token(identity=user.id)
+    access_token = create_access_token(identity=str(user.id))
+    refresh_token = create_refresh_token(identity=str(user.id))
     
     return jsonify({
         'message': 'Login successful',
@@ -59,7 +59,10 @@ def login_user():
 
 @jwt_required()
 def get_current_user():
-    user_id = get_jwt_identity()
+    raw_user_id = get_jwt_identity()
+    user_id = int(raw_user_id) if raw_user_id is not None else None
+    if user_id is None:
+        return jsonify({'error': 'Missing user identity in token'}), 401
     user = User.query.get(user_id)
     
     if not user:

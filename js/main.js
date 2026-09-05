@@ -82,7 +82,7 @@ async function sendTestToBackend(testData) {
             console.log('⚠️ Not logged in. Test saved locally only.');
             return null;
         }
-        
+
         const response = await fetch(`${API_URL}/test`, {
             method: 'POST',
             headers: {
@@ -91,18 +91,30 @@ async function sendTestToBackend(testData) {
             },
             body: JSON.stringify(testData)
         });
-        
-        const data = await response.json();
-        if (response.ok) {
-            console.log('✅ Test saved to backend!', data);
-            return data;
-        } else {
-            console.error('Error saving test:', data);
-            if (data.error) alert('❌ ' + data.error);
-            return null;
+
+        const responseText = await response.text();
+        let responseData = {};
+        try {
+            responseData = responseText ? JSON.parse(responseText) : {};
+        } catch (parseError) {
+            responseData = { raw: responseText };
         }
+
+        console.log('POST /api/test HTTP status:', response.status);
+        console.log('POST /api/test response JSON:', responseData);
+
+        if (response.ok) {
+            console.log('✅ Test saved to backend!', responseData);
+            return responseData;
+        }
+
+        const message = responseData && responseData.error ? responseData.error : 'Test analysis succeeded but the backend save failed.';
+        console.error('Error saving test:', { status: response.status, responseJSON: responseData, message });
+        alert('❌ ' + message);
+        return null;
     } catch (error) {
         console.error('Backend error:', error);
+        alert('❌ The analysis completed, but the test was not saved to the database. Please try again.');
         return null;
     }
 }
@@ -143,14 +155,42 @@ async function getDashboardStats() {
 
 // Load user tests from backend
 async function loadUserTests() {
-    const tests = await getTestsFromBackend();
-    if (tests && tests.length > 0) {
-        console.log(`📊 Loaded ${tests.length} tests from cloud`);
-        const stats = await getDashboardStats();
-        if (stats) {
-            updateDashboardFromCloud(stats);
-        }
+    const [statsResult, testsResult] = await Promise.allSettled([
+        getDashboardStats(),
+        getTestsFromBackend()
+    ]);
+
+    if (statsResult.status === 'fulfilled' && statsResult.value) {
+        updateDashboardFromCloud(statsResult.value);
     }
+
+    if (testsResult.status === 'fulfilled') {
+        renderRecentTestsFromBackend(testsResult.value || []);
+    }
+}
+
+function renderRecentTestsFromBackend(tests) {
+    const container = getEl('recentTests');
+    if (!container) return;
+
+    if (!Array.isArray(tests) || tests.length === 0) {
+        container.innerHTML = '<p class="text-muted">No tests conducted yet. Start testing!</p>';
+        return;
+    }
+
+    container.innerHTML = tests.slice(0, 10).map(test => `
+        <div class="recent-test-item">
+            <span class="test-id">${test.sample_id}</span>
+            <span>💧 ${test.moisture}% | 🔬 ${test.protein}%</span>
+            <span class="test-quality status status-${(test.quality_label || 'good').toLowerCase()}">
+                ${test.quality_label || 'Good'}
+            </span>
+            <span style="font-size:0.75rem;color:#888;">
+                ${new Date(test.timestamp).toLocaleTimeString()}
+            </span>
+            <span style="font-size:0.7rem;color:#4caf50;">☁️</span>
+        </div>
+    `).join('');
 }
 
 // Update dashboard from cloud data
@@ -170,25 +210,6 @@ function updateDashboardFromCloud(stats) {
     const dist = stats.quality_distribution || {};
     if (goodCountEl) goodCountEl.textContent = dist.Good || 0;
     if (unsafeCountEl) unsafeCountEl.textContent = (dist.Poor || 0) + (dist.Unsafe || 0);
-
-    if (stats.recent_tests && stats.recent_tests.length > 0) {
-        const container = getEl('recentTests');
-        if (container) {
-            container.innerHTML = stats.recent_tests.map(test => `
-                <div class="recent-test-item">
-                    <span class="test-id">${test.sample_id}</span>
-                    <span>💧 ${test.moisture}% | 🔬 ${test.protein}%</span>
-                    <span class="test-quality status status-${test.quality_label.toLowerCase()}">
-                        ${test.quality_label}
-                    </span>
-                    <span style="font-size:0.75rem;color:#888;">
-                        ${new Date(test.timestamp).toLocaleTimeString()}
-                    </span>
-                    <span style="font-size:0.7rem;color:#4caf50;">☁️</span>
-                </div>
-            `).join('');
-        }
-    }
 }
 
 // Update UI for logged in user
@@ -876,44 +897,50 @@ if (_testForm) {
             cloudSaved = true;
             qrData = backendResult.qr_code || null;
             console.log('✅ Test saved to cloud!');
+            await loadUserTests();
             
             // Display QR code if available
             if (qrData) {
                 displayQRCode(qrData);
             }
+        } else {
+            alert('❌ The analysis completed, but the test was not saved to the database. Please retry the submission.');
         }
     }
     
-    // Add cloud badge if saved
     const advisoryBox = document.getElementById('advisoryBox');
-    const existingBadge = advisoryBox.querySelector('.cloud-badge');
-    if (existingBadge) existingBadge.remove();
-    
-    const badge = document.createElement('div');
-    badge.className = 'cloud-badge';
-    badge.style.cssText = `
-        padding: 5px 15px;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        margin-top: 10px;
-        display: inline-block;
-        ${cloudSaved ? 'background: #4caf50; color: white;' : 'background: #ff9800; color: white;'}
-    `;
-    badge.innerHTML = cloudSaved ? '☁️ Saved to Cloud' : '💻 Saved Locally - Login to sync';
-    advisoryBox.appendChild(badge);
-    
-    sensorSim.addTestToHistory({
-        moisture: formData.moisture,
-        protein: formData.protein,
-        fiber: formData.fiber,
-        ph: formData.ph,
-        energy: formData.energy,
-        temperature: 30,
-        aflatoxin: result.aflatoxin || 0,
-        quality: result.quality,
-        score: result.score,
-        contamination: result.contamination || 'None'
-    });
+    if (advisoryBox) {
+        const existingBadge = advisoryBox.querySelector('.cloud-badge');
+        if (existingBadge) existingBadge.remove();
+
+        const badge = document.createElement('div');
+        badge.className = 'cloud-badge';
+        badge.style.cssText = `
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-top: 10px;
+            display: inline-block;
+            ${cloudSaved ? 'background: #4caf50; color: white;' : 'background: #ff9800; color: white;'}
+        `;
+        badge.innerHTML = cloudSaved ? '☁️ Saved to Cloud' : (token ? '⚠️ Save failed' : '💻 Saved Locally - Login to sync');
+        advisoryBox.appendChild(badge);
+    }
+
+    if (!token) {
+        sensorSim.addTestToHistory({
+            moisture: formData.moisture,
+            protein: formData.protein,
+            fiber: formData.fiber,
+            ph: formData.ph,
+            energy: formData.energy,
+            temperature: 30,
+            aflatoxin: result.aflatoxin || 0,
+            quality: result.quality,
+            score: result.score,
+            contamination: result.contamination || 'None'
+        });
+    }
     
     const resultsEl = getEl('testResults');
     if (resultsEl) resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1173,13 +1200,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 3000);
     
-    setTimeout(() => {
-        const demoData = sensorSim.generateSensorData();
-        sensorSim.addTestToHistory(demoData);
-        sensorSim.updateDashboard();
-        sensorSim.updateChart();
-        sensorSim.updateRecentTests();
-    }, 1000);
+    // Do not auto-generate demo tests; use the backend data when the user is logged in.
     
     const connElInit = getEl('connectionStatus');
     if (connElInit) {
