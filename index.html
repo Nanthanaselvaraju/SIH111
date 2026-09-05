@@ -21,23 +21,23 @@
         <div class="nav-container">
             <div class="nav-logo">
                 <i class="fas fa-cow"></i>
-                <span>SmartFeed</span>
+                <span>DiaryLens</span>
                 <span class="badge">SIH 2026</span>
             </div>
             <ul class="nav-menu">
-                <li><a href="#home" class="active"><i class="fas fa-home"></i> Home</a></li>
-                <li><a href="#test"><i class="fas fa-flask"></i> Test</a></li>
-                <li><a href="#dashboard"><i class="fas fa-chart-pie"></i> Dashboard</a></li>
-                <li><a href="#advisory"><i class="fas fa-list-check"></i> Advisory</a></li>
-                <li><a href="#about"><i class="fas fa-info-circle"></i> About</a></li>
+                <li><a href="#home" class="active" data-i18n="nav_home"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="#test" data-i18n="nav_test"><i class="fas fa-flask"></i> Test</a></li>
+                <li><a href="#dashboard" data-i18n="nav_dashboard"><i class="fas fa-chart-pie"></i> Dashboard</a></li>
+                <li><a href="#advisory" data-i18n="nav_advisory"><i class="fas fa-list-check"></i> Advisory</a></li>
+                <li><a href="#about" data-i18n="nav_about"><i class="fas fa-info-circle"></i> About</a></li>
             </ul>
             <div class="nav-right">
                 <div class="auth-buttons" id="authButtons">
                     <button onclick="showLoginModal()" class="btn-secondary" style="padding: 8px 20px; font-size: 0.9rem;">
-                        <i class="fas fa-sign-in-alt"></i> Login
+                        <i class="fas fa-sign-in-alt"></i> <span data-i18n="login">Login</span>
                     </button>
                     <button onclick="showRegisterModal()" class="btn-primary" style="padding: 8px 20px; font-size: 0.9rem;">
-                        <i class="fas fa-user-plus"></i> Register
+                        <i class="fas fa-user-plus"></i> <span data-i18n="register">Register</span>
                     </button>
                 </div>
                 <div class="auth-buttons" id="authUserInfo" style="display: none;">
@@ -45,7 +45,7 @@
                         <i class="fas fa-user-circle"></i> <span id="userNameText"></span>
                     </span>
                     <button onclick="logoutUser()" class="btn-secondary" style="padding: 8px 20px; font-size: 0.9rem; background: #ffcdd2; color: #c62828; border-color: #c62828;">
-                        <i class="fas fa-sign-out-alt"></i> Logout
+                        <i class="fas fa-sign-out-alt"></i> <span data-i18n="logout">Logout</span>
                     </button>
                 </div>
                 <div class="language-selector">
@@ -68,20 +68,20 @@
     <section id="home" class="hero">
         <div class="hero-content">
             <div class="hero-badge">
-                <i class="fas fa-microchip"></i> AI-Powered • Smart India Hackathon 2026
+                <i class="fas fa-microchip"></i> <span data-i18n="app_badge">AI-Powered • Smart India Hackathon 2026</span>
             </div>
-            <h1>AI-Powered Portable Cattle Feed &amp; Silage Quality Intelligence</h1>
-            <p>Rapid on-field quality assessment for immediate feed-quality decisions. 
-               <span class="highlight">Results in under 5 minutes!</span></p>
+                <h1 data-i18n="app_title">AI-Powered Portable Cattle Feed &amp; Silage Quality Intelligence</h1>
+                <p><span data-i18n="app_subtitle">Rapid on-field quality assessment for immediate feed-quality decisions.</span>
+                    <span class="highlight" data-i18n="results_time">Results in under 5 minutes!</span></p>
             <div class="hero-buttons">
                 <button onclick="scrollToSection('test')" class="btn-primary">
-                    <i class="fas fa-microscope"></i> Start Testing
+                    <i class="fas fa-microscope"></i> <span data-i18n="btn_start_test">Start Testing</span>
                 </button>
                 <button onclick="scrollToSection('dashboard')" class="btn-secondary">
-                    <i class="fas fa-chart-line"></i> View Dashboard
+                    <i class="fas fa-chart-line"></i> <span data-i18n="btn_dashboard">View Dashboard</span>
                 </button>
                 <button onclick="autoFillWithSensorData()" class="btn-tertiary">
-                    <i class="fas fa-microchip"></i> Simulate Sensors
+                    <i class="fas fa-microchip"></i> <span data-i18n="btn_simulate">Simulate Sensors</span>
                 </button>
             </div>
             <div class="hero-stats">
@@ -111,7 +111,7 @@
 
     <!-- ==================== TEST SECTION ==================== -->
     <section id="test" class="test-section">
-        <h2 class="section-title"><i class="fas fa-flask"></i> Feed Quality Testing</h2>
+        <h2 class="section-title"><i class="fas fa-flask"></i> <span data-i18n="test_title">Feed Quality Testing</span></h2>
         
         <!-- Virtual Sensor Status -->
         <div class="sensor-status-bar" id="sensorStatusBar">
@@ -143,40 +143,40 @@
                 
                 <form id="testForm">
                     <div class="form-group">
-                        <label for="sampleId"><i class="fas fa-tag"></i> Sample ID</label>
-                        <input type="text" id="sampleId" placeholder="Enter sample ID or leave auto" value="AUTO">
+                        <label for="sampleId"><i class="fas fa-tag"></i> <span data-i18n="sample_id">Sample ID</span></label>
+                        <input type="text" id="sampleId" data-i18n-placeholder="sample_id_placeholder" placeholder="Enter sample ID or leave auto" value="AUTO">
                     </div>
                     
                     <div class="form-group">
-                        <label for="feedType"><i class="fas fa-list"></i> Feed Type</label>
-                        <select id="feedType" required>
-                            <option value="">Select feed type</option>
-                            <option value="cattle">Cattle Feed Pellet</option>
-                            <option value="silage">Silage</option>
-                            <option value="fodder">Green Fodder</option>
-                            <option value="concentrate">Concentrate Mix</option>
-                            <option value="mineral">Mineral Mixture</option>
+                        <label for="feedType"><i class="fas fa-list"></i> <span data-i18n="feed_type">Feed Type</span></label>
+                        <select id="feedType" data-i18n-options="feed_types" required>
+                            <option value="" data-i18n="select_feed">Select feed type</option>
+                            <option value="cattle" data-i18n="feed_cattle">Cattle Feed Pellet</option>
+                            <option value="silage" data-i18n="feed_silage">Silage</option>
+                            <option value="fodder" data-i18n="feed_fodder">Green Fodder</option>
+                            <option value="concentrate" data-i18n="feed_concentrate">Concentrate Mix</option>
+                            <option value="mineral" data-i18n="feed_mineral">Mineral Mixture</option>
                         </select>
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="moisture"><i class="fas fa-water"></i> Moisture (%)</label>
+                            <label for="moisture"><i class="fas fa-water"></i> <span data-i18n="moisture">Moisture (%)</span></label>
                             <input type="number" id="moisture" step="0.1" placeholder="e.g., 12.5">
                         </div>
                         <div class="form-group">
-                            <label for="protein"><i class="fas fa-egg"></i> Crude Protein (%)</label>
+                            <label for="protein"><i class="fas fa-egg"></i> <span data-i18n="protein">Crude Protein (%)</span></label>
                             <input type="number" id="protein" step="0.1" placeholder="e.g., 18.5">
                         </div>
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="fiber"><i class="fas fa-seedling"></i> Fiber Content (%)</label>
+                            <label for="fiber"><i class="fas fa-seedling"></i> <span data-i18n="fiber">Fiber Content (%)</span></label>
                             <input type="number" id="fiber" step="0.1" placeholder="e.g., 15.0">
                         </div>
                         <div class="form-group">
-                            <label for="energy"><i class="fas fa-bolt"></i> Energy Value (MJ/kg)</label>
+                            <label for="energy"><i class="fas fa-bolt"></i> <span data-i18n="energy">Energy Value (MJ/kg)</span></label>
                             <input type="number" id="energy" step="0.01" placeholder="e.g., 12.5">
                         </div>
                     </div>
@@ -185,17 +185,17 @@
                     <div id="silageFields" style="display: none;">
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="ph"><i class="fas fa-vial"></i> pH Level</label>
+                                <label for="ph"><i class="fas fa-vial"></i> <span data-i18n="ph">pH Level</span></label>
                                 <input type="number" id="ph" step="0.1" placeholder="e.g., 4.5">
                             </div>
                             <div class="form-group">
-                                <label for="fermentation"><i class="fas fa-flask"></i> Fermentation Quality</label>
+                                <label for="fermentation"><i class="fas fa-flask"></i> <span data-i18n="fermentation">Fermentation Quality</span></label>
                                 <select id="fermentation">
                                     <option value="">Select quality</option>
-                                    <option value="excellent">Excellent</option>
-                                    <option value="good">Good</option>
-                                    <option value="fair">Fair</option>
-                                    <option value="poor">Poor</option>
+                                    <option value="excellent" data-i18n="ferm_excellent">Excellent</option>
+                                    <option value="good" data-i18n="ferm_good">Good</option>
+                                    <option value="fair" data-i18n="ferm_fair">Fair</option>
+                                    <option value="poor" data-i18n="ferm_poor">Poor</option>
                                 </select>
                             </div>
                         </div>
@@ -203,10 +203,10 @@
 
                     <div class="form-actions">
                         <button type="button" onclick="autoFillWithSensorData()" class="btn-secondary">
-                            <i class="fas fa-microchip"></i> Auto-Fill from Virtual Sensors
+                            <i class="fas fa-microchip"></i> <span data-i18n="btn_auto_fill">Auto-Fill from Virtual Sensors</span>
                         </button>
                         <button type="submit" class="btn-primary">
-                            <i class="fas fa-microscope"></i> Analyze Sample
+                            <i class="fas fa-microscope"></i> <span data-i18n="btn_analyze">Analyze Sample</span>
                         </button>
                     </div>
                 </form>
@@ -215,23 +215,23 @@
             <!-- Test Results -->
             <div class="test-results" id="testResults" style="display: none;">
                 <div class="results-header">
-                    <h3><i class="fas fa-chart-bar"></i> Analysis Results</h3>
+                    <h3><i class="fas fa-chart-bar"></i> <span data-i18n="results_title">Analysis Results</span></h3>
                     <span class="result-timestamp" id="resultTimestamp"></span>
                 </div>
                 <div id="resultsContent"></div>
                 <div class="advisory-box" id="advisoryBox">
-                    <h4><i class="fas fa-lightbulb"></i> Advisory</h4>
+                    <h4><i class="fas fa-lightbulb"></i> <span data-i18n="advisory_title">Advisory</span></h4>
                     <p id="advisoryText">Loading advisory...</p>
                 </div>
                 <div class="result-actions">
                     <button onclick="printResults()" class="btn-secondary">
-                        <i class="fas fa-print"></i> Print Results
+                        <i class="fas fa-print"></i> <span data-i18n="btn_print">Print Results</span>
                     </button>
                     <button onclick="saveResult()" class="btn-secondary">
-                        <i class="fas fa-save"></i> Save Result
+                        <i class="fas fa-save"></i> <span data-i18n="btn_save">Save Result</span>
                     </button>
                     <button onclick="shareResult()" class="btn-secondary">
-                        <i class="fas fa-share-alt"></i> Share
+                        <i class="fas fa-share-alt"></i> <span data-i18n="btn_share">Share</span>
                     </button>
                 </div>
             </div>
@@ -240,45 +240,45 @@
 
     <!-- ==================== DASHBOARD SECTION ==================== -->
     <section id="dashboard" class="dashboard-section">
-        <h2 class="section-title"><i class="fas fa-chart-pie"></i> Live Dashboard</h2>
+        <h2 class="section-title"><i class="fas fa-chart-pie"></i> <span data-i18n="dashboard_title">Live Dashboard</span></h2>
         <div class="dashboard-grid">
             <div class="dashboard-card">
-                <h3>Quality Distribution</h3>
+                <h3 data-i18n="quality_distribution">Quality Distribution</h3>
                 <div class="chart-container">
                     <canvas id="qualityChart"></canvas>
                 </div>
             </div>
             <div class="dashboard-card">
-                <h3>Key Metrics</h3>
+                <h3 data-i18n="key_metrics">Key Metrics</h3>
                 <div class="metrics-grid">
                     <div class="metric">
                         <span class="metric-value" id="totalTests">0</span>
-                        <span class="metric-label">Total Tests</span>
+                        <span class="metric-label" data-i18n="total_tests">Total Tests</span>
                     </div>
                     <div class="metric">
                         <span class="metric-value" id="avgProtein">0%</span>
-                        <span class="metric-label">Avg Protein</span>
+                        <span class="metric-label" data-i18n="avg_protein">Avg Protein</span>
                     </div>
                     <div class="metric">
                         <span class="metric-value" id="avgMoisture">0%</span>
-                        <span class="metric-label">Avg Moisture</span>
+                        <span class="metric-label" data-i18n="avg_moisture">Avg Moisture</span>
                     </div>
                     <div class="metric">
                         <span class="metric-value" id="qualityScore">0%</span>
-                        <span class="metric-label">Overall Quality</span>
+                        <span class="metric-label" data-i18n="quality_score_label">Overall Quality</span>
                     </div>
                     <div class="metric">
                         <span class="metric-value" id="goodCount">0</span>
-                        <span class="metric-label">Good Quality</span>
+                        <span class="metric-label" data-i18n="good_quality">Good Quality</span>
                     </div>
                     <div class="metric">
                         <span class="metric-value" id="unsafeCount">0</span>
-                        <span class="metric-label">Unsafe</span>
+                        <span class="metric-label" data-i18n="unsafe_label">Unsafe</span>
                     </div>
                 </div>
             </div>
             <div class="dashboard-card full-width">
-                <h3>Recent Tests</h3>
+                <h3 data-i18n="recent_tests">Recent Tests</h3>
                 <div id="recentTests">
                     <p class="text-muted">No tests conducted yet. Start testing!</p>
                 </div>
@@ -288,58 +288,58 @@
 
     <!-- ==================== ADVISORY SECTION ==================== -->
     <section id="advisory" class="advisory-section">
-        <h2 class="section-title"><i class="fas fa-list-check"></i> Feed Advisories</h2>
+        <h2 class="section-title"><i class="fas fa-list-check"></i> <span data-i18n="advisory_section">Feed Advisories</span></h2>
         <div class="advisory-grid">
             <div class="advisory-card">
                 <i class="fas fa-water"></i>
-                <h3>Moisture Management</h3>
-                <p>Optimal levels: 10-12% for feed, 40-60% for silage</p>
-                <span class="status status-good">Good</span>
+                <h3 data-i18n="advisory_moisture">Moisture Management</h3>
+                <p data-i18n="advisory_moisture_desc">Optimal levels: 10-12% for feed, 40-60% for silage</p>
+                <span class="status status-good" data-i18n="status_good">Good</span>
             </div>
             <div class="advisory-card">
                 <i class="fas fa-egg"></i>
-                <h3>Protein Requirements</h3>
-                <p>18-22% crude protein recommended for lactating cattle</p>
-                <span class="status status-warning">Monitor</span>
+                <h3 data-i18n="advisory_protein">Protein Requirements</h3>
+                <p data-i18n="advisory_protein_desc">18-22% crude protein recommended for lactating cattle</p>
+                <span class="status status-warning" data-i18n="status_warning">Monitor</span>
             </div>
             <div class="advisory-card">
                 <i class="fas fa-seedling"></i>
-                <h3>Fiber Content</h3>
-                <p>15-18% fiber for optimal rumen function</p>
-                <span class="status status-good">Good</span>
+                <h3 data-i18n="advisory_fiber">Fiber Content</h3>
+                <p data-i18n="advisory_fiber_desc">15-18% fiber for optimal rumen function</p>
+                <span class="status status-good" data-i18n="status_good">Good</span>
             </div>
             <div class="advisory-card">
                 <i class="fas fa-biohazard"></i>
-                <h3>Contamination Alert</h3>
-                <p>Regular monitoring for aflatoxins and mycotoxins</p>
-                <span class="status status-danger">Alert</span>
+                <h3 data-i18n="advisory_contamination">Contamination Alert</h3>
+                <p data-i18n="advisory_contamination_desc">Regular monitoring for aflatoxins and mycotoxins</p>
+                <span class="status status-alert" data-i18n="status_alert">Alert</span>
             </div>
             <div class="advisory-card">
                 <i class="fas fa-temperature-high"></i>
-                <h3>Storage Conditions</h3>
-                <p>Store in cool, dry place below 25°C</p>
-                <span class="status status-warning">Monitor</span>
+                <h3 data-i18n="advisory_storage">Storage Conditions</h3>
+                <p data-i18n="advisory_storage_desc">Store in cool, dry place below 25°C</p>
+                <span class="status status-warning" data-i18n="status_warning">Monitor</span>
             </div>
             <div class="advisory-card">
                 <i class="fas fa-clock"></i>
-                <h3>Feeding Schedule</h3>
-                <p>Fresh feed twice daily, check for spoilage</p>
-                <span class="status status-good">Good</span>
+                <h3 data-i18n="advisory_feeding">Feeding Schedule</h3>
+                <p data-i18n="advisory_feeding_desc">Fresh feed twice daily, check for spoilage</p>
+                <span class="status status-good" data-i18n="status_good">Good</span>
             </div>
         </div>
     </section>
 
     <!-- ==================== ABOUT SECTION ==================== -->
     <section id="about" class="about-section">
-        <h2 class="section-title"><i class="fas fa-info-circle"></i> About SmartFeed</h2>
+        <h2 class="section-title"><i class="fas fa-info-circle"></i> <span data-i18n="about_title">About SmartFeed</span></h2>
         <div class="about-content">
             <div class="about-grid">
                 <div class="about-card">
-                    <h3><i class="fas fa-bullseye"></i> Mission</h3>
-                    <p>To empower dairy farmers with affordable, rapid, and accurate feed quality testing using AI and sensor technology.</p>
+                    <h3><i class="fas fa-bullseye"></i> <span data-i18n="about_mission">Mission</span></h3>
+                    <p data-i18n="about_mission_text">To empower dairy farmers with affordable, rapid, and accurate feed quality testing using AI and sensor technology.</p>
                 </div>
                 <div class="about-card">
-                    <h3><i class="fas fa-cogs"></i> Technology</h3>
+                    <h3><i class="fas fa-cogs"></i> <span data-i18n="about_technology">Technology</span></h3>
                     <ul>
                         <li>🧠 AI/ML for quality prediction</li>
                         <li>📱 Mobile-first web application</li>
@@ -349,13 +349,13 @@
                     </ul>
                 </div>
                 <div class="about-card">
-                    <h3><i class="fas fa-users"></i> Team</h3>
+                    <h3><i class="fas fa-users"></i> <span data-i18n="about_team">Team</span></h3>
                     <p>Smart India Hackathon 2026<br>
                     Problem Statement: SIH26111<br>
                     Theme: Agriculture, FoodTech & Rural Development</p>
                 </div>
                 <div class="about-card">
-                    <h3><i class="fas fa-trophy"></i> Impact</h3>
+                    <h3><i class="fas fa-trophy"></i> <span data-i18n="about_impact">Impact</span></h3>
                     <ul>
                         <li>✅ Reduce dependency on labs</li>
                         <li>✅ Rapid on-field testing</li>
@@ -437,6 +437,7 @@
         </div>
     </footer>
 
+    <script src="js/languages.js"></script>
     <!-- Custom JavaScript -->
     <script src="js/main.js"></script>
 </body>

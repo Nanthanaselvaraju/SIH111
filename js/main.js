@@ -1,6 +1,6 @@
 // ============================================
 // SMARTFEED - COMPLETE MAIN JAVASCRIPT
-// WITH BACKEND INTEGRATION
+// WITH MULTI-LANGUAGE SUPPORT
 // SIH 2026 - Problem Statement SIH26111
 // ============================================
 
@@ -143,7 +143,6 @@ async function loadUserTests() {
     const tests = await getTestsFromBackend();
     if (tests && tests.length > 0) {
         console.log(`📊 Loaded ${tests.length} tests from cloud`);
-        // Update dashboard with cloud data
         const stats = await getDashboardStats();
         if (stats) {
             updateDashboardFromCloud(stats);
@@ -158,12 +157,10 @@ function updateDashboardFromCloud(stats) {
     document.getElementById('avgMoisture').textContent = (stats.averages?.moisture || 0) + '%';
     document.getElementById('qualityScore').textContent = (stats.averages?.score || 0) + '%';
     
-    // Update quality counts
     const dist = stats.quality_distribution || {};
     document.getElementById('goodCount').textContent = dist.Good || 0;
     document.getElementById('unsafeCount').textContent = (dist.Poor || 0) + (dist.Unsafe || 0);
     
-    // Update recent tests
     if (stats.recent_tests && stats.recent_tests.length > 0) {
         const container = document.getElementById('recentTests');
         container.innerHTML = stats.recent_tests.map(test => `
@@ -251,6 +248,35 @@ async function handleRegister() {
     
     await registerUser(username, email, password, fullName);
     closeRegisterModal();
+}
+
+// ============================================
+// WEBSOCKET CONNECTION (REAL-TIME UPDATES)
+// ============================================
+
+let socket = null;
+if (typeof io === 'function') {
+    socket = io('http://localhost:5000');
+
+    socket.on('connect', function() {
+        console.log('✅ WebSocket Connected!');
+        document.getElementById('connectionStatus').textContent = '● Online';
+        document.getElementById('connectionStatus').style.color = '#4caf50';
+    });
+
+    socket.on('disconnect', function() {
+        console.log('❌ WebSocket Disconnected');
+        document.getElementById('connectionStatus').textContent = '● Offline';
+        document.getElementById('connectionStatus').style.color = '#f44336';
+    });
+
+    socket.on('new_test', function(data) {
+        console.log('📊 New test received:', data);
+        showToast('🔄 New test result available!');
+        if (data.test) loadUserTests();
+    });
+} else {
+    console.log('ℹ️ Socket.IO client not loaded; using local sensor mode.');
 }
 
 // ============================================
@@ -571,7 +597,7 @@ async function autoFillWithSensorData() {
     
     updateSensorStatus(data);
     
-    const btn = document.querySelector('.btn-tertiary');
+    const btn = document.querySelector('[onclick="autoFillWithSensorData()"]');
     if (btn) {
         const originalText = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-check-circle"></i> Data Loaded!';
@@ -659,6 +685,42 @@ function shareResult() {
 }
 
 // ============================================
+// QR CODE DISPLAY
+// ============================================
+
+function displayQRCode(qrData) {
+    const resultsDiv = document.getElementById('resultsContent');
+    if (!resultsDiv) return;
+    
+    const qrHtml = `
+        <div class="qr-section" style="text-align:center; margin: 15px 0; padding: 15px; background: #f5f5f5; border-radius: 10px; border: 2px dashed #2e7d32;">
+            <h4 style="color: #2e7d32;"><i class="fas fa-qrcode"></i> Test QR Code</h4>
+            <img src="data:image/png;base64,${qrData.base64}" 
+                 alt="QR Code" 
+                 style="max-width: 150px; margin: 10px auto; display: block; border: 3px solid #2e7d32; border-radius: 8px;">
+            <p style="font-size: 0.85rem; color: #666;">
+                <i class="fas fa-info-circle"></i> Scan to view test results
+            </p>
+            <button onclick="downloadQR()" class="btn-secondary" style="padding: 5px 15px; font-size: 0.85rem;">
+                <i class="fas fa-download"></i> Download QR Code
+            </button>
+        </div>
+    `;
+    
+    resultsDiv.innerHTML += qrHtml;
+}
+
+function downloadQR() {
+    const qrImg = document.querySelector('.qr-section img');
+    if (qrImg) {
+        const link = document.createElement('a');
+        link.download = 'test-qr-code.png';
+        link.href = qrImg.src;
+        link.click();
+    }
+}
+
+// ============================================
 // FORM HANDLING
 // ============================================
 
@@ -703,6 +765,8 @@ document.getElementById('testForm').addEventListener('submit', async function(e)
     // Send to backend if logged in
     const token = localStorage.getItem('authToken');
     let cloudSaved = false;
+    let qrData = null;
+    
     if (token) {
         const backendResult = await sendTestToBackend({
             moisture: formData.moisture,
@@ -717,7 +781,13 @@ document.getElementById('testForm').addEventListener('submit', async function(e)
         
         if (backendResult) {
             cloudSaved = true;
+            qrData = backendResult.qr_code || null;
             console.log('✅ Test saved to cloud!');
+            
+            // Display QR code if available
+            if (qrData) {
+                displayQRCode(qrData);
+            }
         }
     }
     
@@ -884,46 +954,49 @@ function displayResults(formData, result) {
     resultsDiv.style.display = 'block';
     timestampSpan.textContent = new Date().toLocaleString();
     
+    // Get quality label translation
+    const qualityLabel = t('quality_' + result.quality.toLowerCase());
+    
     contentDiv.innerHTML = `
         <div class="result-item">
-            <strong><i class="fas fa-tag"></i> Sample ID</strong>
+            <strong><i class="fas fa-tag"></i> ${t('sample_id')}</strong>
             <span>${formData.sampleId}</span>
         </div>
         <div class="result-item">
-            <strong><i class="fas fa-list"></i> Feed Type</strong>
-            <span>${formData.feedType.charAt(0).toUpperCase() + formData.feedType.slice(1)}</span>
+            <strong><i class="fas fa-list"></i> ${t('feed_type')}</strong>
+            <span>${t('feed_' + formData.feedType) || formData.feedType}</span>
         </div>
         <div class="result-item">
-            <strong><i class="fas fa-water"></i> Moisture</strong>
+            <strong><i class="fas fa-water"></i> ${t('moisture')}</strong>
             <span>${formData.moisture}% <span class="status status-${formData.moisture >= 10 && formData.moisture <= 15 ? 'good' : formData.moisture > 20 ? 'danger' : 'warning'}">${formData.moisture >= 10 && formData.moisture <= 15 ? '✅ Optimal' : formData.moisture > 20 ? '⚠️ High' : '⚠️ Low'}</span></span>
         </div>
         <div class="result-item">
-            <strong><i class="fas fa-egg"></i> Crude Protein</strong>
+            <strong><i class="fas fa-egg"></i> ${t('protein')}</strong>
             <span>${formData.protein}% <span class="status status-${formData.protein >= 18 && formData.protein <= 22 ? 'good' : formData.protein < 15 ? 'danger' : 'warning'}">${formData.protein >= 18 && formData.protein <= 22 ? '✅ Optimal' : formData.protein < 15 ? '❌ Deficient' : '⚠️ Suboptimal'}</span></span>
         </div>
         <div class="result-item">
-            <strong><i class="fas fa-seedling"></i> Fiber Content</strong>
+            <strong><i class="fas fa-seedling"></i> ${t('fiber')}</strong>
             <span>${formData.fiber}% <span class="status status-${formData.fiber >= 15 && formData.fiber <= 18 ? 'good' : formData.fiber < 12 || formData.fiber > 22 ? 'danger' : 'warning'}">${formData.fiber >= 15 && formData.fiber <= 18 ? '✅ Optimal' : formData.fiber < 12 ? '❌ Low' : formData.fiber > 22 ? '⚠️ High' : '⚠️ Suboptimal'}</span></span>
         </div>
         <div class="result-item">
-            <strong><i class="fas fa-bolt"></i> Energy Value</strong>
+            <strong><i class="fas fa-bolt"></i> ${t('energy')}</strong>
             <span>${formData.energy} MJ/kg</span>
         </div>
         <div class="result-item">
-            <strong><i class="fas fa-vial"></i> pH Level</strong>
+            <strong><i class="fas fa-vial"></i> ${t('ph')}</strong>
             <span>${formData.ph} <span class="status status-${formData.ph >= 5.5 && formData.ph <= 7.5 ? 'good' : formData.ph < 4.5 ? 'danger' : 'warning'}">${formData.ph >= 5.5 && formData.ph <= 7.5 ? '✅ Good' : formData.ph < 4.5 ? '⚠️ Acidic' : '⚠️ Slightly Off'}</span></span>
         </div>
         <div class="result-item">
-            <strong><i class="fas fa-biohazard"></i> Contamination</strong>
+            <strong><i class="fas fa-biohazard"></i> ${t('contamination')}</strong>
             <span class="status status-${result.contamination !== 'None' ? 'danger' : 'good'}">${result.contamination}</span>
         </div>
         <div class="result-item" style="border-top:2px solid #e8e8e8;margin-top:10px;padding-top:15px;">
-            <strong><i class="fas fa-star"></i> Quality Score</strong>
+            <strong><i class="fas fa-star"></i> ${t('quality_score')}</strong>
             <span style="font-size:1.2rem;font-weight:700;color:${result.score >= 80 ? '#4caf50' : result.score >= 60 ? '#ff9800' : '#f44336'}">${result.score}/100</span>
         </div>
         <div class="result-item" style="border-bottom:none;">
-            <strong><i class="fas fa-check-circle"></i> Overall Quality</strong>
-            <span class="status status-${result.quality.toLowerCase()}" style="font-size:1rem;padding:5px 20px;">${result.quality}</span>
+            <strong><i class="fas fa-check-circle"></i> ${t('overall_quality')}</strong>
+            <span class="status status-${result.quality.toLowerCase()}" style="font-size:1rem;padding:5px 20px;">${qualityLabel}</span>
         </div>
     `;
     
@@ -949,18 +1022,6 @@ document.addEventListener('scroll', function() {
 
 document.getElementById('navToggle').addEventListener('click', function() {
     document.querySelector('.nav-menu').classList.toggle('open');
-});
-
-document.getElementById('languageSelect').addEventListener('change', function() {
-    const lang = this.value;
-    const messages = {
-        'en': 'Language changed to English',
-        'hi': 'भाषा हिंदी में बदली गई',
-        'ta': 'மொழி தமிழுக்கு மாற்றப்பட்டது',
-        'te': 'భాష తెలుగుకు మార్చబడింది',
-        'mr': 'भाषा मराठीत बदलली'
-    };
-    showToast(messages[lang] || 'Language changed');
 });
 
 function showToast(message) {
@@ -1003,7 +1064,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 SmartFeed AI System Initialized');
     console.log('📡 Virtual Sensor Simulator Active');
     console.log('🧠 AI Quality Prediction Engine Ready');
-    console.log('🌐 Multilingual Support Available');
+    console.log('🌐 Multi-Language Support Active');
     console.log('☁️ Cloud Sync: ' + (localStorage.getItem('authToken') ? 'Enabled' : 'Disabled'));
     
     sensorSim.initChart();
