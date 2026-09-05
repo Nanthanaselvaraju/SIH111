@@ -763,11 +763,20 @@ function downloadQR() {
 }
 
 function createQRAnalysis(rawValue) {
+    const safeRawValue = typeof rawValue === 'string' ? rawValue.trim() : '';
     let payload = {};
-    try {
-        payload = JSON.parse(rawValue);
-    } catch {
-        payload = {};
+    let isJsonPayload = false;
+
+    if (safeRawValue) {
+        try {
+            const parsed = JSON.parse(safeRawValue);
+            if (parsed && typeof parsed === 'object') {
+                payload = parsed;
+                isJsonPayload = true;
+            }
+        } catch {
+            payload = {};
+        }
     }
 
     const reading = sensorSim.getSingleReading();
@@ -783,7 +792,13 @@ function createQRAnalysis(rawValue) {
         'moisture', 'moisture_percent', 'protein', 'crude_protein', 'protein_percent',
         'fiber', 'fiber_percent', 'energy', 'energy_value', 'ph', 'pH'
     ];
+    const hasMeasurements = measurementKeys.some(key => Object.prototype.hasOwnProperty.call(payload, key));
+
     return {
+        rawValue: safeRawValue,
+        isJsonPayload,
+        hasMeasurements,
+        isDemoData: !hasMeasurements,
         formData: {
             sampleId: payload.sampleId || payload.sample_id || 'QR-' + Date.now().toString().slice(-6),
             feedType: payload.feedType || payload.feed_type || 'cattle',
@@ -792,8 +807,7 @@ function createQRAnalysis(rawValue) {
             fiber: value(['fiber', 'fiber_percent'], reading.fiber),
             energy: value(['energy', 'energy_value'], reading.energy),
             ph: value(['ph', 'pH'], reading.ph)
-        },
-        hasMeasurements: measurementKeys.some(key => Object.prototype.hasOwnProperty.call(payload, key))
+        }
     };
 }
 
@@ -1225,47 +1239,65 @@ document.addEventListener('DOMContentLoaded', function() {
     function toggleInputCard(el, inputType) {
         if (!el) return;
         const wrapper = getEl('detailsFormWrapper');
-        const qrButton = getEl('qrScanBtn');
+        const qrActionButtons = getEl('qrActionButtons');
+        const imageActionButtons = getEl('imageActionButtons');
+
         if (el.classList.contains('selected')) {
             el.classList.remove('selected');
             selectedInputs.delete(inputType);
             if (inputType === 'details' && wrapper) wrapper.style.display = 'none';
-            if (inputType === 'qr' && qrButton) qrButton.style.display = 'none';
+            if (inputType === 'qr' && qrActionButtons) qrActionButtons.style.display = 'none';
+            if (inputType === 'image' && imageActionButtons) imageActionButtons.style.display = 'none';
         } else {
             el.classList.add('selected');
             selectedInputs.add(inputType);
             if (inputType === 'details' && wrapper) wrapper.style.display = 'block';
-            if (inputType === 'qr' && qrButton) qrButton.style.display = 'inline-flex';
+            if (inputType === 'qr' && qrActionButtons) qrActionButtons.style.display = 'flex';
+            if (inputType === 'image' && imageActionButtons) imageActionButtons.style.display = 'flex';
         }
         updateAvailableInputsDisplay();
     }
 
     const qrScanBtn = getEl('qrScanBtn');
+    const qrUploadBtn = getEl('qrUploadBtn');
     const qrUpload = getEl('qrUpload');
+    const imageTakePhotoBtn = getEl('imageTakePhotoBtn');
+    const imageUploadBtn = getEl('imageUploadBtn');
+    const imageUpload = getEl('imageUpload');
     let scannedQRValue = '';
 
     function showQRResult(rawValue) {
-        scannedQRValue = rawValue;
+        const decodedValue = typeof rawValue === 'string' ? rawValue.trim() : '';
+        scannedQRValue = decodedValue;
         const qrValueEl = getEl('qrValue');
         if (qrValueEl) {
-            qrValueEl.textContent = 'QR data received';
+            qrValueEl.textContent = decodedValue ? 'QR data received' : 'QR data was decoded but empty';
             qrValueEl.style.display = 'block';
         }
         const qrCard = getEl('inputCardQR');
         if (qrCard && !qrCard.classList.contains('selected')) toggleInputCard(qrCard, 'qr');
-        showToast('✅ QR code scanned. Click Analyze for results.');
+        showToast('✅ QR code received. Click Analyze for results.');
     }
 
     async function scanQRWithCamera() {
-        if (!('BarcodeDetector' in window) || !navigator.mediaDevices?.getUserMedia) {
+        const hasMediaDevices = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+        const isSecureContext = window.isSecureContext || ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+
+        if (!hasMediaDevices || !isSecureContext) {
+            const message = !hasMediaDevices
+                ? 'Camera access is unavailable in this browser. Please upload a QR image instead.'
+                : 'Camera access requires a secure context. Please upload a QR image instead.';
+            showToast(message);
             if (qrUpload) qrUpload.click();
-            else alert('QR camera scanning is not supported in this browser.');
             return;
         }
 
         const video = document.createElement('video');
-        video.setAttribute('playsinline', '');
+        video.setAttribute('playsinline', 'true');
+        video.setAttribute('autoplay', 'true');
+        video.muted = true;
         video.style.cssText = 'width:100%; max-width:420px; border-radius:10px; background:#111;';
+
         const dialog = document.createElement('div');
         dialog.style.cssText = 'position:fixed; inset:0; z-index:10000; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:14px; padding:20px; background:rgba(0,0,0,.82);';
         const close = document.createElement('button');
@@ -1274,49 +1306,129 @@ document.addEventListener('DOMContentLoaded', function() {
         dialog.append(video, close);
         document.body.appendChild(dialog);
 
-        let stream;
+        let stream = null;
         let stopped = false;
         const stop = () => {
             stopped = true;
-            if (stream) stream.getTracks().forEach(track => track.stop());
-            dialog.remove();
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            if (dialog.parentNode) dialog.remove();
         };
-        close.addEventListener('click', stop);
+        close.addEventListener('click', () => {
+            stop();
+            showToast('QR scanner closed. Please upload a QR image if needed.');
+        });
 
         try {
-            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: 'environment' } },
+                audio: false
+            });
+
             video.srcObject = stream;
             await video.play();
-            const detector = new BarcodeDetector({ formats: ['qr_code'] });
-            const detect = async () => {
+
+            const detector = ('BarcodeDetector' in window) ? new BarcodeDetector({ formats: ['qr_code'] }) : null;
+
+            const fallbackToUpload = (message) => {
+                stop();
+                showToast(message);
+                if (qrUpload) qrUpload.click();
+            };
+
+            if (detector) {
+                const detect = async () => {
+                    if (stopped) return;
+                    try {
+                        const codes = await detector.detect(video);
+                        if (codes.length > 0 && codes[0].rawValue) {
+                            showQRResult(codes[0].rawValue);
+                            stop();
+                            return;
+                        }
+                    } catch (error) {
+                        console.warn('BarcodeDetector QR detection warning:', error);
+                    }
+                    requestAnimationFrame(detect);
+                };
+                detect();
+                return;
+            }
+
+            if (typeof window.jsQR !== 'function') {
+                fallbackToUpload('The QR decoder is unavailable. Please upload a QR image instead.');
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+
+            const scanWithJsQR = () => {
                 if (stopped) return;
-                try {
-                    const codes = await detector.detect(video);
-                    if (codes.length > 0 && codes[0].rawValue) {
-                        showQRResult(codes[0].rawValue);
+                if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = window.jsQR(imageData.data, canvas.width, canvas.height, {
+                        inversionAttempts: 'attemptBoth'
+                    });
+                    if (code && code.data) {
+                        showQRResult(code.data);
                         stop();
                         return;
                     }
-                } catch (error) {
-                    console.error('QR detection error:', error);
                 }
-                requestAnimationFrame(detect);
+                requestAnimationFrame(scanWithJsQR);
             };
-            detect();
+            scanWithJsQR();
         } catch (error) {
+            const name = error && error.name ? error.name : 'UnknownError';
+            const msg = name === 'NotAllowedError'
+                ? 'Camera permission was denied. Please allow camera access or upload a QR image.'
+                : name === 'NotFoundError'
+                    ? 'No camera was found. Please upload a QR image.'
+                    : name === 'NotReadableError'
+                        ? 'Camera is currently unavailable. Please close other apps using the camera.'
+                        : 'Camera could not be opened. Please upload a QR image instead.';
+            console.warn('QR camera access error:', error);
             stop();
-            alert('Camera could not be opened. Choose a QR image instead.');
+            showToast(msg);
             if (qrUpload) qrUpload.click();
         }
     }
 
     if (qrScanBtn) qrScanBtn.addEventListener('click', function(event) {
+        event.preventDefault();
         event.stopPropagation();
         scanQRWithCamera();
     });
 
+    if (qrUploadBtn) qrUploadBtn.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (qrUpload) qrUpload.click();
+    });
+
     async function decodeQRImage(file) {
-        const image = await createImageBitmap(file);
+        if (typeof window.jsQR !== 'function') {
+            throw new Error('jsQR is unavailable');
+        }
+
+        let image;
+        try {
+            image = await createImageBitmap(file);
+        } catch (error) {
+            image = new Image();
+            image.src = URL.createObjectURL(file);
+            await new Promise((resolve, reject) => {
+                image.onload = resolve;
+                image.onerror = reject;
+            });
+        }
+
         const maxDimension = 1800;
         const scale = Math.min(2, maxDimension / Math.max(image.width, image.height));
         const width = Math.max(1, Math.round(image.width * scale));
@@ -1331,6 +1443,7 @@ document.addEventListener('DOMContentLoaded', function() {
         context.fillRect(0, 0, width, height);
         context.drawImage(image, 0, 0, width, height);
         if (image.close) image.close();
+        if (image.src && image.src.startsWith('blob:')) URL.revokeObjectURL(image.src);
 
         const source = context.getImageData(0, 0, width, height);
         const variants = [source];
@@ -1364,22 +1477,41 @@ document.addEventListener('DOMContentLoaded', function() {
     if (qrUpload) qrUpload.addEventListener('change', async function() {
         const file = this.files && this.files[0];
         if (!file) return;
+
         try {
             let rawValue = '';
             if ('BarcodeDetector' in window) {
-                const detector = new BarcodeDetector({ formats: ['qr_code'] });
-                const codes = await detector.detect(await createImageBitmap(file));
-                rawValue = codes[0]?.rawValue || '';
+                try {
+                    const detector = new BarcodeDetector({ formats: ['qr_code'] });
+                    const bitmap = await createImageBitmap(file);
+                    const codes = await detector.detect(bitmap);
+                    rawValue = codes[0]?.rawValue || '';
+                    if (bitmap.close) bitmap.close();
+                } catch (error) {
+                    console.warn('BarcodeDetector fallback issue:', error);
+                }
             }
 
-            if (!rawValue && typeof window.jsQR === 'function') {
+            if (!rawValue) {
+                if (typeof window.jsQR !== 'function') {
+                    throw new Error('jsQR library is not loaded');
+                }
                 rawValue = await decodeQRImage(file);
             }
 
-            if (!rawValue) throw new Error('No QR code found');
+            if (!rawValue) {
+                throw new Error('No QR code found');
+            }
+
             showQRResult(rawValue);
+            this.value = '';
         } catch (error) {
-            alert('No readable QR code was found in that image.');
+            console.warn('QR image decode error:', error);
+            const message = error && error.message && error.message.includes('library')
+                ? 'The QR image decoder is unavailable. Please use a browser with jsQR support or scan with the camera.'
+                : 'No readable QR code was found in that image. Please try another file.';
+            showToast(message);
+            this.value = '';
         }
     });
 
@@ -1388,15 +1520,94 @@ document.addEventListener('DOMContentLoaded', function() {
         const el = getEl(id);
         if (el) {
             el.addEventListener('click', function(e) {
-                // prevent clicks on inner controls from toggling twice
-                if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+                if (e.target.closest('button') || e.target.closest('input')) return;
                 toggleInputCard(el, el.dataset.input);
-                if (el.dataset.input === 'image' && imageUpload) imageUpload.click();
             });
         }
     });
 
-    const imageUpload = getEl('imageUpload');
+    if (imageTakePhotoBtn) {
+        imageTakePhotoBtn.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const imgCard = getEl('inputCardImage');
+            if (imgCard && !imgCard.classList.contains('selected')) toggleInputCard(imgCard, 'image');
+
+            const isSecureContext = window.isSecureContext || ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !isSecureContext) {
+                showToast('Camera access is unavailable here. Please upload an image instead.');
+                if (imageUpload) imageUpload.click();
+                return;
+            }
+
+            const video = document.createElement('video');
+            video.setAttribute('playsinline', 'true');
+            video.setAttribute('autoplay', 'true');
+            video.muted = true;
+            video.style.cssText = 'width:100%; max-width:420px; border-radius:10px; background:#111;';
+
+            const dialog = document.createElement('div');
+            dialog.style.cssText = 'position:fixed; inset:0; z-index:10000; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:14px; padding:20px; background:rgba(0,0,0,.82);';
+            const capture = document.createElement('button');
+            capture.className = 'btn-primary';
+            capture.textContent = 'Capture photo';
+            const close = document.createElement('button');
+            close.className = 'btn-secondary';
+            close.textContent = 'Close';
+            dialog.append(video, capture, close);
+            document.body.appendChild(dialog);
+
+            let stream = null;
+            const stop = () => {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                }
+                if (dialog.parentNode) dialog.remove();
+            };
+            close.addEventListener('click', stop);
+
+            navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: 'environment' } },
+                audio: false
+            }).then((mediaStream) => {
+                stream = mediaStream;
+                video.srcObject = stream;
+                return video.play();
+            }).then(() => {
+                capture.addEventListener('click', async function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth || 1280;
+                    canvas.height = video.videoHeight || 720;
+                    const context = canvas.getContext('2d');
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                    const file = new File([blob], 'camera-capture.png', { type: 'image/png' });
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    if (imageUpload) {
+                        imageUpload.files = dataTransfer.files;
+                        imageUpload.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    stop();
+                }, { once: true });
+            }).catch((error) => {
+                console.warn('Image camera error:', error);
+                stop();
+                showToast('Camera access was denied. Please upload an image instead.');
+                if (imageUpload) imageUpload.click();
+            });
+        });
+    }
+
+    if (imageUploadBtn) {
+        imageUploadBtn.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (imageUpload) imageUpload.click();
+        });
+    }
+
     if (imageUpload) {
         imageUpload.addEventListener('change', function() {
             if (this.files && this.files.length > 0) {
@@ -1464,19 +1675,46 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (selected.includes('qr')) {
                 if (!scannedQRValue) {
-                    alert('Please scan a QR code first.');
+                    alert('Please scan or upload a QR code first.');
                     return;
                 }
+
                 const qrAnalysis = createQRAnalysis(scannedQRValue);
-                qrAnalysis.result = analyzeFeed(qrAnalysis.formData);
-                displayResults(qrAnalysis.formData, qrAnalysis.result);
-                showToast('✅ QR code analyzed.');
+                const detailsForm = {
+                    sampleId: document.getElementById('sampleId')?.value || '',
+                    feedType: document.getElementById('feedType')?.value || '',
+                    moisture: parseFloat(document.getElementById('moisture')?.value || '0') || 0,
+                    protein: parseFloat(document.getElementById('protein')?.value || '0') || 0,
+                    fiber: parseFloat(document.getElementById('fiber')?.value || '0') || 0,
+                    energy: parseFloat(document.getElementById('energy')?.value || '0') || 0,
+                    ph: parseFloat(document.getElementById('ph')?.value || '0') || 0
+                };
+
+                const hasManualDetails = selected.includes('details') && (
+                    detailsForm.sampleId || detailsForm.feedType || detailsForm.moisture || detailsForm.protein ||
+                    detailsForm.fiber || detailsForm.energy || detailsForm.ph
+                );
+
+                const formData = hasManualDetails
+                    ? {
+                        ...qrAnalysis.formData,
+                        ...Object.fromEntries(Object.entries(detailsForm).filter(([, value]) => value !== '' && value !== null && value !== undefined && !(typeof value === 'number' && Number.isNaN(value)))),
+                    }
+                    : qrAnalysis.formData;
+
+                formData.sampleId = formData.sampleId || qrAnalysis.formData.sampleId;
+                formData.feedType = formData.feedType || qrAnalysis.formData.feedType;
+
+                const result = analyzeFeed(formData);
+                displayResults(formData, result);
+                showToast(qrAnalysis.hasMeasurements ? '✅ QR code analyzed.' : '⚠️ QR decoded, but it did not contain feed measurement data; demo estimates are shown.');
+
                 const resultsContent = getEl('resultsContent');
                 if (resultsContent) {
                     const sourceText = qrAnalysis.hasMeasurements
                         ? 'Measurements loaded from QR data.'
-                        : 'QR code did not contain nutrient measurements; demo estimates are shown.';
-                    resultsContent.insertAdjacentHTML('afterbegin', `<div style="margin-bottom:12px; color:var(--text-muted);"><strong>Source:</strong> QR code<br><small>${sourceText}</small></div>`);
+                        : 'QR code decoded successfully, but it did not contain feed measurement data. Simulated/demo values are shown for this project.';
+                    resultsContent.insertAdjacentHTML('afterbegin', `<div style="margin-bottom:12px; color:var(--text-muted);"><strong>Source:</strong> QR Code<br><small>${sourceText}</small></div>`);
                 }
                 const resultsEl = getEl('testResults');
                 if (resultsEl) resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });

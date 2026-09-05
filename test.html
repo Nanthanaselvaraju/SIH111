@@ -84,7 +84,11 @@
                             <div class="input-card" id="inputCardImage" data-input="image">
                                 <div style="font-size:1.4rem;">📷 <strong>IMAGE</strong></div>
                                 <div style="font-size:0.9rem; color:var(--text-muted);">Upload Feed/Silage Image</div>
-                                <input type="file" id="imageUpload" accept="image/*" aria-label="Choose feed or silage image" style="margin-top:8px; display:none;" />
+                                <div id="imageActionButtons" style="display:none; margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+                                    <button id="imageTakePhotoBtn" class="btn-secondary" type="button"><i class="fas fa-camera"></i> Take Photo</button>
+                                    <button id="imageUploadBtn" class="btn-secondary" type="button"><i class="fas fa-upload"></i> Upload Image</button>
+                                </div>
+                                <input type="file" id="imageUpload" accept="image/*" aria-label="Choose feed or silage image" style="display:none;" />
                                 <div id="imagePreview" style="display:none; width:100%; margin-top:4px;">
                                     <img id="imagePreviewImage" alt="Selected feed or silage preview" style="display:block; width:100%; max-height:140px; object-fit:cover; border-radius:8px;" />
                                     <div id="imageFileName" style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); word-break:break-word;"></div>
@@ -97,7 +101,10 @@
                             <div class="input-card" id="inputCardQR" data-input="qr">
                                 <div style="font-size:1.4rem;">📱 <strong>QR</strong></div>
                                 <div style="font-size:0.9rem; color:var(--text-muted);">Scan QR Code</div>
-                                <button id="qrScanBtn" class="btn-secondary" style="margin-top:8px; display:none;"><i class="fas fa-camera"></i> Scan QR</button>
+                                <div id="qrActionButtons" style="display:none; margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+                                    <button id="qrScanBtn" class="btn-secondary" type="button"><i class="fas fa-camera"></i> Use Camera</button>
+                                    <button id="qrUploadBtn" class="btn-secondary" type="button"><i class="fas fa-upload"></i> Upload QR Image</button>
+                                </div>
                                 <input type="file" id="qrUpload" accept="image/*" capture="environment" aria-label="Upload QR code image" style="display:none;" />
                                 <div id="qrValue" style="display:none; margin-top:4px; font-size:0.8rem; color:var(--text-muted); word-break:break-word;"></div>
                             </div>
