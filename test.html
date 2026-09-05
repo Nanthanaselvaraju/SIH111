@@ -84,7 +84,11 @@
                             <div class="input-card" id="inputCardImage" data-input="image">
                                 <div style="font-size:1.4rem;">📷 <strong>IMAGE</strong></div>
                                 <div style="font-size:0.9rem; color:var(--text-muted);">Upload Feed/Silage Image</div>
-                                <input type="file" id="imageUpload" accept="image/*" style="margin-top:8px; display:none;" />
+                                <input type="file" id="imageUpload" accept="image/*" aria-label="Choose feed or silage image" style="margin-top:8px; display:none;" />
+                                <div id="imagePreview" style="display:none; width:100%; margin-top:4px;">
+                                    <img id="imagePreviewImage" alt="Selected feed or silage preview" style="display:block; width:100%; max-height:140px; object-fit:cover; border-radius:8px;" />
+                                    <div id="imageFileName" style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); word-break:break-word;"></div>
+                                </div>
                             </div>
                             <div class="input-card" id="inputCardDetails" data-input="details">
                                 <div style="font-size:1.4rem;">📝 <strong>DETAILS</strong></div>
@@ -93,7 +97,9 @@
                             <div class="input-card" id="inputCardQR" data-input="qr">
                                 <div style="font-size:1.4rem;">📱 <strong>QR</strong></div>
                                 <div style="font-size:0.9rem; color:var(--text-muted);">Scan QR Code</div>
-                                <button id="qrScanBtn" class="btn-secondary" style="margin-top:8px; display:none;">Scan QR</button>
+                                <button id="qrScanBtn" class="btn-secondary" style="margin-top:8px; display:none;"><i class="fas fa-camera"></i> Scan QR</button>
+                                <input type="file" id="qrUpload" accept="image/*" capture="environment" aria-label="Upload QR code image" style="display:none;" />
+                                <div id="qrValue" style="display:none; margin-top:4px; font-size:0.8rem; color:var(--text-muted); word-break:break-word;"></div>
                             </div>
                             <div class="input-card" id="inputCardHardware" data-input="hardware">
                                 <div style="font-size:1.4rem;">🔌 <strong>HARDWARE</strong></div>
@@ -279,6 +285,7 @@
         </div>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="js/languages.js"></script>
     <script src="js/main.js"></script>
 </body>

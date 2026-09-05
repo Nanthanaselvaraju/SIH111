@@ -762,6 +762,41 @@ function downloadQR() {
     }
 }
 
+function createQRAnalysis(rawValue) {
+    let payload = {};
+    try {
+        payload = JSON.parse(rawValue);
+    } catch {
+        payload = {};
+    }
+
+    const reading = sensorSim.getSingleReading();
+    const value = (keys, fallback) => {
+        for (const key of keys) {
+            const number = Number(payload[key]);
+            if (Number.isFinite(number)) return number;
+        }
+        return fallback;
+    };
+
+    const measurementKeys = [
+        'moisture', 'moisture_percent', 'protein', 'crude_protein', 'protein_percent',
+        'fiber', 'fiber_percent', 'energy', 'energy_value', 'ph', 'pH'
+    ];
+    return {
+        formData: {
+            sampleId: payload.sampleId || payload.sample_id || 'QR-' + Date.now().toString().slice(-6),
+            feedType: payload.feedType || payload.feed_type || 'cattle',
+            moisture: value(['moisture', 'moisture_percent'], reading.moisture),
+            protein: value(['protein', 'crude_protein', 'protein_percent'], reading.protein),
+            fiber: value(['fiber', 'fiber_percent'], reading.fiber),
+            energy: value(['energy', 'energy_value'], reading.energy),
+            ph: value(['ph', 'pH'], reading.ph)
+        },
+        hasMeasurements: measurementKeys.some(key => Object.prototype.hasOwnProperty.call(payload, key))
+    };
+}
+
 // ============================================
 // FORM HANDLING
 // ============================================
@@ -1190,17 +1225,163 @@ document.addEventListener('DOMContentLoaded', function() {
     function toggleInputCard(el, inputType) {
         if (!el) return;
         const wrapper = getEl('detailsFormWrapper');
+        const qrButton = getEl('qrScanBtn');
         if (el.classList.contains('selected')) {
             el.classList.remove('selected');
             selectedInputs.delete(inputType);
             if (inputType === 'details' && wrapper) wrapper.style.display = 'none';
+            if (inputType === 'qr' && qrButton) qrButton.style.display = 'none';
         } else {
             el.classList.add('selected');
             selectedInputs.add(inputType);
             if (inputType === 'details' && wrapper) wrapper.style.display = 'block';
+            if (inputType === 'qr' && qrButton) qrButton.style.display = 'inline-flex';
         }
         updateAvailableInputsDisplay();
     }
+
+    const qrScanBtn = getEl('qrScanBtn');
+    const qrUpload = getEl('qrUpload');
+    let scannedQRValue = '';
+
+    function showQRResult(rawValue) {
+        scannedQRValue = rawValue;
+        const qrValueEl = getEl('qrValue');
+        if (qrValueEl) {
+            qrValueEl.textContent = 'QR data received';
+            qrValueEl.style.display = 'block';
+        }
+        const qrCard = getEl('inputCardQR');
+        if (qrCard && !qrCard.classList.contains('selected')) toggleInputCard(qrCard, 'qr');
+        showToast('✅ QR code scanned. Click Analyze for results.');
+    }
+
+    async function scanQRWithCamera() {
+        if (!('BarcodeDetector' in window) || !navigator.mediaDevices?.getUserMedia) {
+            if (qrUpload) qrUpload.click();
+            else alert('QR camera scanning is not supported in this browser.');
+            return;
+        }
+
+        const video = document.createElement('video');
+        video.setAttribute('playsinline', '');
+        video.style.cssText = 'width:100%; max-width:420px; border-radius:10px; background:#111;';
+        const dialog = document.createElement('div');
+        dialog.style.cssText = 'position:fixed; inset:0; z-index:10000; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:14px; padding:20px; background:rgba(0,0,0,.82);';
+        const close = document.createElement('button');
+        close.className = 'btn-secondary';
+        close.textContent = 'Close scanner';
+        dialog.append(video, close);
+        document.body.appendChild(dialog);
+
+        let stream;
+        let stopped = false;
+        const stop = () => {
+            stopped = true;
+            if (stream) stream.getTracks().forEach(track => track.stop());
+            dialog.remove();
+        };
+        close.addEventListener('click', stop);
+
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+            video.srcObject = stream;
+            await video.play();
+            const detector = new BarcodeDetector({ formats: ['qr_code'] });
+            const detect = async () => {
+                if (stopped) return;
+                try {
+                    const codes = await detector.detect(video);
+                    if (codes.length > 0 && codes[0].rawValue) {
+                        showQRResult(codes[0].rawValue);
+                        stop();
+                        return;
+                    }
+                } catch (error) {
+                    console.error('QR detection error:', error);
+                }
+                requestAnimationFrame(detect);
+            };
+            detect();
+        } catch (error) {
+            stop();
+            alert('Camera could not be opened. Choose a QR image instead.');
+            if (qrUpload) qrUpload.click();
+        }
+    }
+
+    if (qrScanBtn) qrScanBtn.addEventListener('click', function(event) {
+        event.stopPropagation();
+        scanQRWithCamera();
+    });
+
+    async function decodeQRImage(file) {
+        const image = await createImageBitmap(file);
+        const maxDimension = 1800;
+        const scale = Math.min(2, maxDimension / Math.max(image.width, image.height));
+        const width = Math.max(1, Math.round(image.width * scale));
+        const height = Math.max(1, Math.round(image.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = 'high';
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, width, height);
+        context.drawImage(image, 0, 0, width, height);
+        if (image.close) image.close();
+
+        const source = context.getImageData(0, 0, width, height);
+        const variants = [source];
+        const grayscale = new ImageData(new Uint8ClampedArray(source.data), width, height);
+        const threshold128 = new ImageData(new Uint8ClampedArray(source.data), width, height);
+        const threshold180 = new ImageData(new Uint8ClampedArray(source.data), width, height);
+
+        for (let index = 0; index < source.data.length; index += 4) {
+            const gray = Math.round(
+                source.data[index] * 0.299 +
+                source.data[index + 1] * 0.587 +
+                source.data[index + 2] * 0.114
+            );
+            grayscale.data[index] = gray;
+            grayscale.data[index + 1] = gray;
+            grayscale.data[index + 2] = gray;
+            threshold128.data[index] = threshold128.data[index + 1] = threshold128.data[index + 2] = gray < 128 ? 0 : 255;
+            threshold180.data[index] = threshold180.data[index + 1] = threshold180.data[index + 2] = gray < 180 ? 0 : 255;
+        }
+        variants.push(grayscale, threshold128, threshold180);
+
+        for (const variant of variants) {
+            const code = window.jsQR(variant.data, variant.width, variant.height, {
+                inversionAttempts: 'attemptBoth'
+            });
+            if (code?.data) return code.data;
+        }
+        return '';
+    }
+
+    if (qrUpload) qrUpload.addEventListener('change', async function() {
+        const file = this.files && this.files[0];
+        if (!file) return;
+        try {
+            let rawValue = '';
+            if ('BarcodeDetector' in window) {
+                const detector = new BarcodeDetector({ formats: ['qr_code'] });
+                const codes = await detector.detect(await createImageBitmap(file));
+                rawValue = codes[0]?.rawValue || '';
+            }
+
+            if (!rawValue && typeof window.jsQR === 'function') {
+                rawValue = await decodeQRImage(file);
+            }
+
+            if (!rawValue) throw new Error('No QR code found');
+            showQRResult(rawValue);
+        } catch (error) {
+            alert('No readable QR code was found in that image.');
+        }
+    });
 
     const cardIds = ['inputCardImage','inputCardDetails','inputCardQR','inputCardHardware'];
     cardIds.forEach(id => {
@@ -1210,6 +1391,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // prevent clicks on inner controls from toggling twice
                 if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
                 toggleInputCard(el, el.dataset.input);
+                if (el.dataset.input === 'image' && imageUpload) imageUpload.click();
             });
         }
     });
@@ -1218,9 +1400,18 @@ document.addEventListener('DOMContentLoaded', function() {
     if (imageUpload) {
         imageUpload.addEventListener('change', function() {
             if (this.files && this.files.length > 0) {
+                const file = this.files[0];
                 const imgCard = getEl('inputCardImage');
                 if (imgCard && !imgCard.classList.contains('selected')) toggleInputCard(imgCard, 'image');
-                showToast('✅ Image selected: ' + this.files[0].name);
+                const preview = getEl('imagePreview');
+                const previewImage = getEl('imagePreviewImage');
+                const fileName = getEl('imageFileName');
+                if (preview && previewImage && fileName) {
+                    previewImage.src = URL.createObjectURL(file);
+                    fileName.textContent = file.name;
+                    preview.style.display = 'block';
+                }
+                showToast('✅ Image selected: ' + file.name);
             }
         });
     }
@@ -1232,6 +1423,63 @@ document.addEventListener('DOMContentLoaded', function() {
             const selected = Array.from(selectedInputs);
             if (selected.length === 0) {
                 alert('Please select at least one input type to analyze.');
+                return;
+            }
+
+            if (selected.includes('image')) {
+                const imageFile = imageUpload && imageUpload.files ? imageUpload.files[0] : null;
+                if (!imageFile) {
+                    alert('Please choose a feed or silage image first.');
+                    return;
+                }
+
+                const imageEstimate = sensorSim.getSingleReading();
+                const formData = {
+                    sampleId: 'IMAGE-' + Date.now().toString().slice(-6),
+                    feedType: 'cattle',
+                    moisture: imageEstimate.moisture,
+                    protein: imageEstimate.protein,
+                    fiber: imageEstimate.fiber,
+                    energy: imageEstimate.energy,
+                    ph: imageEstimate.ph,
+                    source: 'Image upload (demo estimate)'
+                };
+                const result = analyzeFeed(formData);
+                displayResults(formData, result);
+                showToast('✅ Image analyzed. Demo estimates are shown in the results.');
+
+                const resultsContent = getEl('resultsContent');
+                if (resultsContent) {
+                    resultsContent.insertAdjacentHTML('afterbegin', `
+                        <div style="margin-bottom:12px; color:var(--text-muted);">
+                            <strong>Source:</strong> ${imageFile.name}<br>
+                            <small>These are simulated estimates for this demo. A calibrated camera/NIR model is required for measured protein and nutrient values.</small>
+                        </div>
+                    `);
+                }
+                const resultsEl = getEl('testResults');
+                if (resultsEl) resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                return;
+            }
+
+            if (selected.includes('qr')) {
+                if (!scannedQRValue) {
+                    alert('Please scan a QR code first.');
+                    return;
+                }
+                const qrAnalysis = createQRAnalysis(scannedQRValue);
+                qrAnalysis.result = analyzeFeed(qrAnalysis.formData);
+                displayResults(qrAnalysis.formData, qrAnalysis.result);
+                showToast('✅ QR code analyzed.');
+                const resultsContent = getEl('resultsContent');
+                if (resultsContent) {
+                    const sourceText = qrAnalysis.hasMeasurements
+                        ? 'Measurements loaded from QR data.'
+                        : 'QR code did not contain nutrient measurements; demo estimates are shown.';
+                    resultsContent.insertAdjacentHTML('afterbegin', `<div style="margin-bottom:12px; color:var(--text-muted);"><strong>Source:</strong> QR code<br><small>${sourceText}</small></div>`);
+                }
+                const resultsEl = getEl('testResults');
+                if (resultsEl) resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 return;
             }
 
