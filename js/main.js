@@ -8,7 +8,7 @@
 // BACKEND API CONNECTION
 // ============================================
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = '/api';
 let authToken = localStorage.getItem('authToken') || null;
 
 // Helper to safely get elements on multi-page layout
@@ -202,14 +202,53 @@ function updateDashboardFromCloud(stats) {
     const goodCountEl = getEl('goodCount');
     const unsafeCountEl = getEl('unsafeCount');
 
-    if (totalTestsEl) totalTestsEl.textContent = stats.total_tests || 0;
-    if (avgProteinEl) avgProteinEl.textContent = (stats.averages?.protein || 0) + '%';
-    if (avgMoistureEl) avgMoistureEl.textContent = (stats.averages?.moisture || 0) + '%';
-    if (qualityScoreEl) qualityScoreEl.textContent = (stats.averages?.score || 0) + '%';
+    // Update key metrics
+    if (totalTestsEl) {
+        totalTestsEl.textContent = stats.total_tests || 0;
+    }
 
+    if (avgProteinEl) {
+        avgProteinEl.textContent =
+            (stats.averages?.protein || 0) + '%';
+    }
+
+    if (avgMoistureEl) {
+        avgMoistureEl.textContent =
+            (stats.averages?.moisture || 0) + '%';
+    }
+
+    if (qualityScoreEl) {
+        qualityScoreEl.textContent =
+            (stats.averages?.score || 0) + '%';
+    }
+
+    // Quality distribution from backend
     const dist = stats.quality_distribution || {};
-    if (goodCountEl) goodCountEl.textContent = dist.Good || 0;
-    if (unsafeCountEl) unsafeCountEl.textContent = (dist.Poor || 0) + (dist.Unsafe || 0);
+
+    const good = Number(dist.Good || dist.good || 0);
+    const moderate = Number(dist.Moderate || dist.moderate || 0);
+    const poor = Number(dist.Poor || dist.poor || 0);
+    const unsafe = Number(dist.Unsafe || dist.unsafe || 0);
+
+    if (goodCountEl) {
+        goodCountEl.textContent = good;
+    }
+
+    if (unsafeCountEl) {
+        unsafeCountEl.textContent = poor + unsafe;
+    }
+
+    // Update Quality Distribution Chart
+    if (sensorSim.chart) {
+        sensorSim.chart.data.datasets[0].data = [
+            good,
+            moderate,
+            poor,
+            unsafe
+        ];
+
+        sensorSim.chart.update();
+    }
 }
 
 // Update UI for logged in user
@@ -299,7 +338,7 @@ async function handleRegister() {
 
 let socket = null;
 if (typeof io === 'function') {
-    socket = io('http://localhost:5000');
+    socket = io();
 
     socket.on('connect', function() {
         console.log('✅ WebSocket Connected!');
@@ -666,7 +705,7 @@ async function autoFillWithSensorData() {
     
     // Check backend connection
     try {
-        const response = await fetch('http://localhost:5000/health');
+        const response = await fetch('/health');
         if (response.ok) {
             console.log('✅ Backend is connected!');
             const connEl = getEl('connectionStatus');
@@ -1211,7 +1250,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check backend
     setTimeout(async () => {
         try {
-            const response = await fetch('http://localhost:5000/health');
+            const response = await fetch('/health');
             if (response.ok) {
                 const connEl2 = getEl('connectionStatus');
                 if (connEl2) {

@@ -24,11 +24,11 @@
                 <span>DiaryLens</span>
             </div>
             <ul class="nav-menu">
-                <li><a href="index.html" class="active" data-i18n="nav_home"><i class="fas fa-home"></i> Home</a></li>
-                <li><a href="test.html" data-i18n="nav_test"><i class="fas fa-flask"></i> Test</a></li>
-                <li><a href="dashboard.html" data-i18n="nav_dashboard"><i class="fas fa-chart-pie"></i> Dashboard</a></li>
-                <li><a href="reports.html" data-i18n="nav_advisory"><i class="fas fa-list-check"></i> Advisory</a></li>
-                <li><a href="about.html" data-i18n="nav_about"><i class="fas fa-info-circle"></i> About</a></li>
+                <li><a href="/" class="active" data-i18n="nav_home"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="/test" data-i18n="nav_test"><i class="fas fa-flask"></i> Test</a></li>
+                <li><a href="/dashboard" data-i18n="nav_dashboard"><i class="fas fa-chart-pie"></i> Dashboard</a></li>
+                <li><a href="/reports" data-i18n="nav_advisory"><i class="fas fa-list-check"></i> Advisory</a></li>
+                <li><a href="/about" data-i18n="nav_about"><i class="fas fa-info-circle"></i> About</a></li>
             </ul>
             <div class="nav-right">
                 <div class="auth-buttons" id="authButtons">
@@ -73,10 +73,10 @@
                 <p><span data-i18n="app_subtitle">Rapid on-field quality assessment for immediate feed-quality decisions.</span>
                     <span class="highlight" data-i18n="results_time">Results in under 5 minutes!</span></p>
             <div class="hero-buttons">
-                <button onclick="location.href='test.html'" class="btn-primary">
+                <button onclick="location.href='/test'" class="btn-primary">
                     <i class="fas fa-microscope"></i> <span data-i18n="btn_start_test">Start Testing</span>
                 </button>
-                <button onclick="location.href='dashboard.html'" class="btn-secondary">
+                <button onclick="location.href='/dashboard'" class="btn-secondary">
                     <i class="fas fa-chart-line"></i> <span data-i18n="btn_dashboard">View Dashboard</span>
                 </button>
                 <button onclick="autoFillWithSensorData()" class="btn-tertiary">
@@ -112,15 +112,15 @@
     <section class="features-section">
         <h2 class="section-title">Explore SmartFeed</h2>
         <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:20px; max-width:1000px; margin:0 auto;">
-            <a href="test.html" class="dashboard-card" style="text-align:center; padding:30px;">
+            <a href="/test" class="dashboard-card" style="text-align:center; padding:30px;">
                 <h3><i class="fas fa-flask"></i> Test</h3>
                 <p>Run feed & silage analysis with virtual sensors.</p>
             </a>
-            <a href="dashboard.html" class="dashboard-card" style="text-align:center; padding:30px;">
+            <a href="/dashboard" class="dashboard-card" style="text-align:center; padding:30px;">
                 <h3><i class="fas fa-chart-pie"></i> Dashboard</h3>
                 <p>View test history, metrics, and summaries.</p>
             </a>
-            <a href="reports.html" class="dashboard-card" style="text-align:center; padding:30px;">
+            <a href="/reports" class="dashboard-card" style="text-align:center; padding:30px;">
                 <h3><i class="fas fa-file-alt"></i> Advisory & Reports</h3>
                 <p>Read advisories and previous analysis reports.</p>
             </a>

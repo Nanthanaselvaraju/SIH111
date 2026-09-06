@@ -1,5 +1,7 @@
 # backend/app.py
-from flask import Flask, request, jsonify
+import os
+
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
 import json
@@ -13,12 +15,49 @@ from datetime import datetime
 app = Flask(__name__)
 app.config.from_object(config['development'])
 
+FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
 CORS(app)
 jwt = JWTManager(app)
 db.init_app(app)
 
 with app.app_context():
     db.create_all()
+
+# ============================================
+# FRONTEND ROUTES
+# ============================================
+
+def serve_page(filename):
+    return send_from_directory(FRONTEND_DIR, filename)
+
+@app.route('/')
+def home_page():
+    return serve_page('index.html')
+
+@app.route('/test')
+def test_page():
+    return serve_page('test.html')
+
+@app.route('/dashboard')
+def dashboard_page():
+    return serve_page('dashboard.html')
+
+@app.route('/reports')
+def reports_page():
+    return serve_page('reports.html')
+
+@app.route('/about')
+def about_page():
+    return serve_page('about.html')
+
+@app.route('/css/<path:filename>')
+def css_asset(filename):
+    return send_from_directory(os.path.join(FRONTEND_DIR, 'css'), filename)
+
+@app.route('/js/<path:filename>')
+def js_asset(filename):
+    return send_from_directory(os.path.join(FRONTEND_DIR, 'js'), filename)
 
 # ============================================
 # AUTHENTICATION ROUTES
