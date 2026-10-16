@@ -8,11 +8,44 @@
 // BACKEND API CONNECTION
 // ============================================
 
-const API_URL = '/api';
+const BACKEND_BASE_URL = window.location.port && window.location.port !== '5000'
+    ? `${window.location.protocol}//${window.location.hostname || '127.0.0.1'}:5000`
+    : '';
+const API_URL = BACKEND_BASE_URL ? `${BACKEND_BASE_URL}/api` : '/api';
+const HEALTH_URL = BACKEND_BASE_URL ? `${BACKEND_BASE_URL}/health` : '/health';
 let authToken = localStorage.getItem('authToken') || null;
 
 // Helper to safely get elements on multi-page layout
 function getEl(id) { return document.getElementById(id); }
+
+async function loadMatlabSimulation() {
+    const message = getEl('matlabSimulationMessage');
+    const values = getEl('matlabSimulationValues');
+    if (!message || !values) return;
+    try {
+        const response = await fetch(`${API_URL}/silage/simulated-reading`);
+        const data = await response.json();
+        if (!response.ok || !data.available) {
+            message.textContent = data.message || 'Simulated MATLAB reading is unavailable.';
+            return;
+        }
+        getEl('matlabTemperature').textContent = `${Number(data.temperature_c).toFixed(1)} °C`;
+        getEl('matlabMoisture').textContent = `${Number(data.moisture_pct).toFixed(1)} %`;
+        getEl('matlabPh').textContent = Number(data.ph).toFixed(2);
+        getEl('matlabTemperatureStatus').textContent = data.status.temperature;
+        getEl('matlabMoistureStatus').textContent = data.status.moisture;
+        getEl('matlabPhStatus').textContent = data.status.ph;
+        getEl('matlabOverallStatus').textContent = data.status.overall;
+        getEl('matlabReadingTime').textContent = `Reading ${data.reading_number} · ${new Date(data.timestamp).toLocaleString()}`;
+        values.hidden = false;
+        message.hidden = true;
+    } catch (error) {
+        values.hidden = true;
+        message.hidden = false;
+        message.textContent = `Cannot reach the Flask API at ${API_URL}/silage/simulated-reading. Start the Python backend in a separate terminal, then refresh this page.`;
+        console.error('MATLAB simulated reading error:', error);
+    }
+}
 
 // Register User
 async function registerUser(username, email, password, fullName) {
@@ -53,6 +86,7 @@ async function loginUser(username, password) {
             alert('✅ Login successful!');
             updateUIForLoggedInUser(data.user);
             await loadUserTests();
+            await loadSavedReports();
             return data;
         } else {
             alert('❌ ' + data.error);
@@ -76,178 +110,200 @@ function logoutUser() {
 
 // Send Test to Backend
 async function sendTestToBackend(testData) {
-    try {
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-            console.log('⚠️ Not logged in. Test saved locally only.');
-            return null;
-        }
-
-        const response = await fetch(`${API_URL}/test`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(testData)
-        });
-
-        const responseText = await response.text();
-        let responseData = {};
-        try {
-            responseData = responseText ? JSON.parse(responseText) : {};
-        } catch (parseError) {
-            responseData = { raw: responseText };
-        }
-
-        console.log('POST /api/test HTTP status:', response.status);
-        console.log('POST /api/test response JSON:', responseData);
-
-        if (response.ok) {
-            console.log('✅ Test saved to backend!', responseData);
-            return responseData;
-        }
-
-        const message = responseData && responseData.error ? responseData.error : 'Test analysis succeeded but the backend save failed.';
-        console.error('Error saving test:', { status: response.status, responseJSON: responseData, message });
-        alert('❌ ' + message);
-        return null;
-    } catch (error) {
-        console.error('Backend error:', error);
-        alert('❌ The analysis completed, but the test was not saved to the database. Please try again.');
-        return null;
-    }
+    const token = localStorage.getItem('authToken');
+    if (!token) return null;
+    const response = await fetch(`${API_URL}/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(testData)
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'The test could not be saved.');
+    return data;
 }
 
-// Get Tests from Backend
-async function getTestsFromBackend() {
-    try {
-        const token = localStorage.getItem('authToken');
-        if (!token) return null;
-        
-        const response = await fetch(`${API_URL}/tests`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
-        return data.tests || [];
-    } catch (error) {
-        console.error('Error fetching tests:', error);
-        return [];
+function dashboardFilterQuery() {
+    const params = new URLSearchParams();
+    for (const [key, id] of [['date_from', 'dashboardDateFrom'], ['date_to', 'dashboardDateTo'], ['feed_type', 'dashboardFeedType']]) {
+        const value = getEl(id)?.value;
+        if (value) params.set(key, value);
     }
+    return params.toString();
 }
 
-// Get Dashboard Stats
-async function getDashboardStats() {
-    try {
-        const token = localStorage.getItem('authToken');
-        if (!token) return null;
-        
-        const response = await fetch(`${API_URL}/dashboard/stats`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error('Error fetching stats:', error);
-        return null;
-    }
+async function getTestsFromBackend(query = '') {
+    const token = localStorage.getItem('authToken');
+    if (!token) return null;
+    const response = await fetch(`${API_URL}/tests${query ? `?${query}` : ''}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Could not load saved tests.');
+    return data.tests || [];
 }
 
-// Load user tests from backend
-async function loadUserTests() {
-    const [statsResult, testsResult] = await Promise.allSettled([
-        getDashboardStats(),
-        getTestsFromBackend()
-    ]);
+async function getDashboardStats(query = '') {
+    const token = localStorage.getItem('authToken');
+    if (!token) return null;
+    const response = await fetch(`${API_URL}/dashboard/stats${query ? `?${query}` : ''}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Could not load dashboard statistics.');
+    return data;
+}
 
-    if (statsResult.status === 'fulfilled' && statsResult.value) {
-        updateDashboardFromCloud(statsResult.value);
+async function loadUserTests(query = dashboardFilterQuery()) {
+    const message = getEl('dashboardDataMessage');
+    if (!localStorage.getItem('authToken')) {
+        if (message) message.textContent = 'Sign in to view database-backed test metrics and history. Local simulations are not included in these statistics.';
+        renderRecentTestsFromBackend([]);
+        setTextIfPresent('recentReportsCount', '—');
+        if (getEl('qualityChart')) getEl('qualityChart').hidden = true;
+        if (getEl('qualityChartEmpty')) getEl('qualityChartEmpty').hidden = false;
+        return;
     }
-
-    if (testsResult.status === 'fulfilled') {
-        renderRecentTestsFromBackend(testsResult.value || []);
+    if (message) message.textContent = 'Loading saved test records…';
+    try {
+        const [stats, tests] = await Promise.all([getDashboardStats(query), getTestsFromBackend(query)]);
+        if (stats) {
+            updateDashboardFromCloud(stats);
+            if (message) message.textContent = stats.total_tests
+                ? `${stats.total_tests} saved test(s) match the selected filters.`
+                : 'No saved tests match these filters.';
+        }
+        renderRecentTestsFromBackend(tests || []);
+    } catch (error) {
+        if (message) message.textContent = error.message || 'Could not load saved tests.';
+        console.error('Could not load dashboard records:', error);
     }
 }
 
 function renderRecentTestsFromBackend(tests) {
     const container = getEl('recentTests');
     if (!container) return;
-
-    if (!Array.isArray(tests) || tests.length === 0) {
-        container.innerHTML = '<p class="text-muted">No tests conducted yet. Start testing!</p>';
+    tests = Array.isArray(tests) ? tests : [];
+    setTextIfPresent('recentReportsCount', Math.min(tests.length, 10));
+    if (tests.length === 0) {
+        container.innerHTML = '<div class="dashboard-empty"><p>No saved tests found yet.</p><a class="btn-secondary" href="./test.html">Start your first feed test</a></div>';
         return;
     }
-
-    container.innerHTML = tests.slice(0, 10).map(test => `
-        <div class="recent-test-item">
-            <span class="test-id">${test.sample_id}</span>
-            <span>💧 ${test.moisture}% | 🔬 ${test.protein}%</span>
-            <span class="test-quality status status-${(test.quality_label || 'good').toLowerCase()}">
-                ${test.quality_label || 'Good'}
-            </span>
-            <span style="font-size:0.75rem;color:#888;">
-                ${new Date(test.timestamp).toLocaleTimeString()}
-            </span>
-            <span style="font-size:0.7rem;color:#4caf50;">☁️</span>
-        </div>
-    `).join('');
+    const rows = tests.slice(0, 10).map(test => {
+        const category = String(test.quality_label || 'Unknown');
+        const statusClass = category === 'Good' ? 'status-good' : category === 'Moderate' ? 'status-warning' : ['Poor', 'Unsafe'].includes(category) ? 'status-danger' : '';
+        const date = test.timestamp ? new Date(test.timestamp).toLocaleDateString() : '—';
+        return `<tr>
+            <td data-label="Test ID">${escapeHTML(test.sample_id || `#${test.id}`)}</td>
+            <td data-label="Date">${escapeHTML(date)}</td>
+            <td data-label="Sample type">${escapeHTML(test.feed_type || '—')}</td>
+            <td data-label="Quality score">${test.quality_score == null ? '—' : `${escapeHTML(test.quality_score)} / 100`}</td>
+            <td data-label="Status"><span class="status ${statusClass}">${escapeHTML(category)}</span></td>
+            <td data-label="Report"><a class="table-link" href="reports.html?test_id=${encodeURIComponent(test.id)}">View report</a></td>
+        </tr>`;
+    }).join('');
+    container.innerHTML = `<table class="history-table"><thead><tr><th>Test ID</th><th>Date</th><th>Sample type</th><th>Quality score</th><th>Status</th><th>Report</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
-// Update dashboard from cloud data
+function setTextIfPresent(id, value) {
+    const element = getEl(id);
+    if (element) element.textContent = value;
+}
+
 function updateDashboardFromCloud(stats) {
-    const totalTestsEl = getEl('totalTests');
-    const avgProteinEl = getEl('avgProtein');
-    const avgMoistureEl = getEl('avgMoisture');
-    const qualityScoreEl = getEl('qualityScore');
-    const goodCountEl = getEl('goodCount');
-    const unsafeCountEl = getEl('unsafeCount');
-
-    // Update key metrics
-    if (totalTestsEl) {
-        totalTestsEl.textContent = stats.total_tests || 0;
-    }
-
-    if (avgProteinEl) {
-        avgProteinEl.textContent =
-            (stats.averages?.protein || 0) + '%';
-    }
-
-    if (avgMoistureEl) {
-        avgMoistureEl.textContent =
-            (stats.averages?.moisture || 0) + '%';
-    }
-
-    if (qualityScoreEl) {
-        qualityScoreEl.textContent =
-            (stats.averages?.score || 0) + '%';
-    }
-
-    // Quality distribution from backend
-    const dist = stats.quality_distribution || {};
-
-    const good = Number(dist.Good || dist.good || 0);
-    const moderate = Number(dist.Moderate || dist.moderate || 0);
-    const poor = Number(dist.Poor || dist.poor || 0);
-    const unsafe = Number(dist.Unsafe || dist.unsafe || 0);
-
-    if (goodCountEl) {
-        goodCountEl.textContent = good;
-    }
-
-    if (unsafeCountEl) {
-        unsafeCountEl.textContent = poor + unsafe;
-    }
-
-    // Update Quality Distribution Chart
+    const setText = (id, value) => { const element = getEl(id); if (element) element.textContent = value; };
+    setText('totalTests', stats.total_tests ?? 0);
+    setText('qualityScore', stats.averages?.score == null ? '—' : `${stats.averages.score}%`);
+    const distribution = stats.quality_distribution || {};
+    const good = Number(distribution.Good || 0);
+    const moderate = Number(distribution.Moderate || 0);
+    const poor = Number(distribution.Poor || 0);
+    const unsafe = Number(distribution.Unsafe || 0);
+    setText('unsafeCount', stats.attention_count ?? poor + unsafe);
+    const chartEmpty = getEl('qualityChartEmpty');
+    if (chartEmpty) chartEmpty.hidden = Number(stats.total_tests || 0) > 0;
+    const chartCanvas = getEl('qualityChart');
+    if (chartCanvas) chartCanvas.hidden = Number(stats.total_tests || 0) === 0;
     if (sensorSim.chart) {
-        sensorSim.chart.data.datasets[0].data = [
-            good,
-            moderate,
-            poor,
-            unsafe
-        ];
-
+        sensorSim.chart.data.datasets[0].data = [good, moderate, poor, unsafe];
         sensorSim.chart.update();
+    }
+}
+
+async function loadSavedReports() {
+    const records = getEl('reportRecords');
+    const message = getEl('reportHistoryMessage');
+    if (!records || !message) return;
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+        message.textContent = 'Sign in to view reports saved to your account.';
+        records.replaceChildren();
+        return;
+    }
+    const params = new URLSearchParams();
+    const search = getEl('reportSearch')?.value.trim();
+    const feedType = getEl('reportTypeFilter')?.value;
+    if (search) params.set('q', search);
+    if (feedType) params.set('feed_type', feedType);
+    message.textContent = 'Loading saved reports…';
+    try {
+        const query = params.toString();
+        const response = await fetch(`${API_URL}/tests${query ? `?${query}` : ''}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not load reports.');
+        const tests = data.tests || [];
+        message.textContent = tests.length ? `${tests.length} saved report(s).` : 'No saved reports match your search.';
+        records.innerHTML = tests.map(test => `
+            <div class="recent-test-item">
+                <span class="test-id">${escapeHTML(test.sample_id)}</span>
+                <span>${escapeHTML(test.feed_type)} · ${escapeHTML(test.quality_label)} · ${escapeHTML(test.quality_score)}/100</span>
+                <span>${escapeHTML(test.timestamp ? new Date(test.timestamp).toLocaleString() : '')}</span>
+                <button class="btn-secondary" type="button" data-report-id="${Number(test.id)}">Open report</button>
+            </div>
+        `).join('');
+        records.querySelectorAll('[data-report-id]').forEach(button => {
+            button.addEventListener('click', () => loadSavedReport(button.dataset.reportId));
+        });
+        const reportId = new URLSearchParams(window.location.search).get('test_id');
+        if (reportId && /^\d+$/.test(reportId)) await loadSavedReport(reportId);
+    } catch (error) {
+        message.textContent = error.message || 'Could not load reports. Confirm the Flask backend is running.';
+        console.error('Saved report loading failed:', error);
+    }
+}
+
+async function loadSavedReport(reportId) {
+    const detail = getEl('reportDetail');
+    const token = localStorage.getItem('authToken');
+    if (!detail || !token) return;
+    detail.hidden = false;
+    detail.textContent = 'Loading report…';
+    try {
+        const response = await fetch(`${API_URL}/tests/${encodeURIComponent(reportId)}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not open report.');
+        const test = data.test;
+        detail.innerHTML = `
+            <h3>Saved report: ${escapeHTML(test.sample_id)}</h3>
+            <p><strong>Date:</strong> ${escapeHTML(test.timestamp ? new Date(test.timestamp).toLocaleString() : '')}</p>
+            <p><strong>Type:</strong> ${escapeHTML(test.feed_type)}</p>
+            <p><strong>Inputs:</strong> Moisture ${escapeHTML(test.moisture)}%, protein ${escapeHTML(test.protein)}%, fiber ${escapeHTML(test.fiber)}%, energy ${escapeHTML(test.energy)} MJ/kg, pH ${escapeHTML(test.ph)}</p>
+            <p><strong>Model result:</strong> ${escapeHTML(test.quality_label)} · ${escapeHTML(test.quality_score)}/100</p>
+            <p><strong>Contamination:</strong> ${escapeHTML(test.contamination || 'Not assessed')}</p>
+            <p><strong>Advisory:</strong> ${escapeHTML(test.advisory || 'No advisory saved.')}</p>
+            <p><strong>Recommendations:</strong> ${test.recommendations?.length ? test.recommendations.map(escapeHTML).join('<br>') : 'None saved.'}</p>
+            <button class="btn-secondary" type="button" id="printSavedReport">Print report</button>
+        `;
+        getEl('printSavedReport')?.addEventListener('click', () => {
+            document.body.classList.add('print-saved-report');
+            window.print();
+        });
+        window.addEventListener('afterprint', () => document.body.classList.remove('print-saved-report'), { once: true });
+    } catch (error) {
+        detail.textContent = error.message || 'Could not open this report.';
     }
 }
 
@@ -262,7 +318,7 @@ function updateUIForLoggedInUser(user) {
     if (authUserInfo) authUserInfo.style.display = 'flex';
     if (userNameText) userNameText.textContent = user.full_name || user.username;
     if (syncStatus) {
-        syncStatus.innerHTML = '☁️ Cloud Sync Active';
+        syncStatus.innerHTML = '☁️ Signed in · saved in the project database';
         syncStatus.style.color = '#4caf50';
     }
 }
@@ -270,7 +326,8 @@ function updateUIForLoggedInUser(user) {
 // Check if user is logged in on page load
 function checkAuthStatus() {
     const token = localStorage.getItem('authToken');
-    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    let user = null;
+    try { user = JSON.parse(localStorage.getItem('user') || 'null'); } catch { localStorage.removeItem('user'); }
     if (token && user) {
         updateUIForLoggedInUser(user);
         console.log('✅ User already logged in:', user.username);
@@ -278,9 +335,10 @@ function checkAuthStatus() {
     } else {
         const syncStatus = getEl('syncStatus');
         if (syncStatus) {
-            syncStatus.innerHTML = '💻 Local Mode - Login to sync';
+            syncStatus.innerHTML = '💻 Local database · sign in to save reports';
             syncStatus.style.color = '#ff9800';
         }
+        loadUserTests('');
     }
 }
 
@@ -313,8 +371,8 @@ async function handleLogin() {
         return;
     }
     
-    await loginUser(username, password);
-    closeLoginModal();
+    const result = await loginUser(username, password);
+    if (result) closeLoginModal();
 }
 
 async function handleRegister() {
@@ -328,8 +386,8 @@ async function handleRegister() {
         return;
     }
     
-    await registerUser(username, email, password, fullName);
-    closeRegisterModal();
+    const result = await registerUser(username, email, password, fullName);
+    if (result) closeRegisterModal();
 }
 
 // ============================================
@@ -381,144 +439,33 @@ class SensorSimulator {
             fiber: 0,
             ph: 0,
             temperature: 0,
-            aflatoxin: 0,
-            energy: 0,
-            contamination: 'None',
-            quality: 'Unknown'
-        };
-        this.testHistory = [];
-        this.totalTests = 0;
-        this.qualityStats = {
-            Good: 0,
-            Moderate: 0,
-            Poor: 0,
-            Unsafe: 0
+            energy: 0
         };
         this.chart = null;
     }
 
     generateSensorData() {
-        const randomNormal = (mean, std) => {
+        const randomNormal = (mean, standardDeviation) => {
             let u = 0, v = 0;
             while (u === 0) u = Math.random();
             while (v === 0) v = Math.random();
-            return mean + std * Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+            return mean + standardDeviation * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
         };
-
+        // These values are for the software demo only, not from physical sensors.
         const moisture = Math.max(0, Math.min(75, randomNormal(15, 10)));
         const protein = Math.max(0, Math.min(30, randomNormal(18, 6)));
         const fiber = Math.max(0, Math.min(30, randomNormal(15, 5)));
-        const ph = Math.max(3.5, Math.min(8.0, randomNormal(6.0, 1.0)));
+        const ph = Math.max(3.5, Math.min(8, randomNormal(6, 1)));
         const temperature = Math.max(20, Math.min(40, randomNormal(30, 5)));
-        const aflatoxin = Math.max(0, Math.min(50, randomNormal(5, 10)));
         const energy = Math.max(8, Math.min(15, randomNormal(11.5, 1.5)));
-
-        let contamination = 'None';
-        if (aflatoxin > 20) contamination = 'Aflatoxin Detected';
-        else if (moisture > 20 && ph < 4.5) contamination = 'Mold Risk';
-        else if (ph < 3.8) contamination = 'Spoilage Detected';
-
-        const qualityData = this.calculateQuality(
-            moisture, protein, fiber, ph, aflatoxin, energy
-        );
-
         return {
             moisture: Math.round(moisture * 10) / 10,
             protein: Math.round(protein * 10) / 10,
             fiber: Math.round(fiber * 10) / 10,
             ph: Math.round(ph * 10) / 10,
             temperature: Math.round(temperature * 10) / 10,
-            aflatoxin: Math.round(aflatoxin * 10) / 10,
             energy: Math.round(energy * 100) / 100,
-            contamination: contamination,
-            quality: qualityData.quality,
-            score: qualityData.score,
-            details: qualityData.details,
             timestamp: new Date().toISOString()
-        };
-    }
-
-    calculateQuality(moisture, protein, fiber, ph, aflatoxin, energy) {
-        let score = 0;
-        const details = {};
-
-        if (moisture >= 10 && moisture <= 15) {
-            score += 25;
-            details.moisture = '✅ Optimal';
-        } else if (moisture > 15 && moisture <= 20) {
-            score += 15;
-            details.moisture = '⚠️ High';
-        } else if (moisture < 10) {
-            score += 10;
-            details.moisture = '⚠️ Low';
-        } else {
-            score += 5;
-            details.moisture = '❌ Very High';
-        }
-
-        if (protein >= 18 && protein <= 22) {
-            score += 25;
-            details.protein = '✅ Optimal';
-        } else if (protein >= 15 && protein < 18) {
-            score += 15;
-            details.protein = '⚠️ Below Optimal';
-        } else if (protein > 22) {
-            score += 15;
-            details.protein = '⚠️ Above Optimal';
-        } else {
-            score += 5;
-            details.protein = '❌ Deficient';
-        }
-
-        if (fiber >= 15 && fiber <= 18) {
-            score += 15;
-            details.fiber = '✅ Optimal';
-        } else if (fiber >= 12 && fiber < 15) {
-            score += 10;
-            details.fiber = '⚠️ Low';
-        } else if (fiber > 18 && fiber <= 22) {
-            score += 10;
-            details.fiber = '⚠️ High';
-        } else {
-            score += 5;
-            details.fiber = '❌ Poor';
-        }
-
-        if (ph >= 5.5 && ph <= 7.5) {
-            score += 20;
-            details.ph = '✅ Optimal';
-        } else if (ph >= 4.5 && ph < 5.5) {
-            score += 12;
-            details.ph = '⚠️ Slightly Acidic';
-        } else if (ph >= 3.8 && ph < 4.5) {
-            score += 12;
-            details.ph = '⚠️ Acidic (Silage OK)';
-        } else {
-            score += 5;
-            details.ph = '❌ Unsuitable';
-        }
-
-        if (aflatoxin < 10) {
-            score += 15;
-            details.aflatoxin = '✅ Safe';
-        } else if (aflatoxin < 20) {
-            score += 8;
-            details.aflatoxin = '⚠️ Monitor';
-        } else {
-            score += 0;
-            details.aflatoxin = '❌ Unsafe';
-        }
-
-        let quality;
-        if (score >= 80) quality = 'Good';
-        else if (score >= 60) quality = 'Moderate';
-        else if (score >= 40) quality = 'Poor';
-        else quality = 'Unsafe';
-
-        return {
-            quality: quality,
-            score: Math.round(score),
-            details: details
         };
     }
 
@@ -536,7 +483,7 @@ class SensorSimulator {
             }
         }, interval);
         
-        console.log('📡 Virtual Sensor Simulation Started!');
+        console.log('📡 Simulated demo readings started (no physical sensors)');
         return this.simulationInterval;
     }
 
@@ -546,91 +493,11 @@ class SensorSimulator {
             clearInterval(this.simulationInterval);
             this.simulationInterval = null;
         }
-        console.log('📡 Virtual Sensor Simulation Stopped.');
+        console.log('📡 Simulated demo readings stopped');
     }
 
     getSingleReading() {
         return this.generateSensorData();
-    }
-
-    addTestToHistory(data) {
-        this.totalTests++;
-        this.qualityStats[data.quality] = (this.qualityStats[data.quality] || 0) + 1;
-        this.testHistory.unshift({
-            id: `TEST-${String(this.totalTests).padStart(4, '0')}`,
-            ...data,
-            index: this.totalTests
-        });
-        if (this.testHistory.length > 100) {
-            this.testHistory.pop();
-        }
-        this.updateDashboard();
-        this.updateChart();
-        this.updateRecentTests();
-    }
-
-    updateDashboard() {
-        const totalTests = document.getElementById('totalTests');
-        const avgProtein = document.getElementById('avgProtein');
-        const avgMoisture = document.getElementById('avgMoisture');
-        const qualityScore = document.getElementById('qualityScore');
-        const goodCount = document.getElementById('goodCount');
-        const unsafeCount = document.getElementById('unsafeCount');
-
-        if (totalTests) totalTests.textContent = this.totalTests;
-
-        if (this.testHistory.length > 0) {
-            const avgP = this.testHistory.reduce((sum, t) => sum + t.protein, 0) / this.testHistory.length;
-            const avgM = this.testHistory.reduce((sum, t) => sum + t.moisture, 0) / this.testHistory.length;
-            if (avgProtein) avgProtein.textContent = avgP.toFixed(1) + '%';
-            if (avgMoisture) avgMoisture.textContent = avgM.toFixed(1) + '%';
-        }
-
-        if (qualityScore) {
-            const latest = this.testHistory[0];
-            if (latest) {
-                qualityScore.textContent = latest.score + '%';
-            }
-        }
-
-        if (goodCount) goodCount.textContent = this.qualityStats.Good || 0;
-        if (unsafeCount) unsafeCount.textContent = this.qualityStats.Unsafe || 0;
-    }
-
-    updateChart() {
-        if (!this.chart) return;
-        const data = this.chart.data;
-        data.datasets[0].data = [
-            this.qualityStats.Good || 0,
-            this.qualityStats.Moderate || 0,
-            this.qualityStats.Poor || 0,
-            this.qualityStats.Unsafe || 0
-        ];
-        this.chart.update();
-    }
-
-    updateRecentTests() {
-        const container = document.getElementById('recentTests');
-        if (!container) return;
-
-        if (this.testHistory.length === 0) {
-            container.innerHTML = '<p class="text-muted">No tests conducted yet. Start testing!</p>';
-            return;
-        }
-
-        const latest = this.testHistory.slice(0, 10);
-        container.innerHTML = latest.map(test => `
-            <div class="recent-test-item">
-                <span class="test-id">${test.id}</span>
-                <span>💧 ${test.moisture}% | 🔬 ${test.protein}%</span>
-                <span class="test-quality status status-${test.quality.toLowerCase()}">
-                    ${test.quality}
-                </span>
-                <span style="font-size:0.75rem;color:#888;">
-                    ${new Date(test.timestamp).toLocaleTimeString()}
-                </span>
-            </div>
-        `).join('');
     }
 
     initChart() {
@@ -643,7 +510,7 @@ class SensorSimulator {
                 labels: ['Good Quality', 'Moderate', 'Poor', 'Unsafe'],
                 datasets: [{
                     data: [0, 0, 0, 0],
-                    backgroundColor: ['#4caf50', '#ff9800', '#f44336', '#9e9e9e'],
+                    backgroundColor: ['#56866a', '#d1a64f', '#b76a45', '#a94b45'],
                     borderWidth: 3,
                     borderColor: '#ffffff'
                 }]
@@ -674,7 +541,7 @@ class SensorSimulator {
 const sensorSim = new SensorSimulator();
 
 // Updated autoFillWithSensorData with backend check
-async function autoFillWithSensorData() {
+async function fillWithSimulatedValues() {
     const data = sensorSim.getSingleReading();
     const moistureEl = getEl('moisture');
     const proteinEl = getEl('protein');
@@ -690,7 +557,7 @@ async function autoFillWithSensorData() {
 
     updateSensorStatus(data);
     
-    const btn = document.querySelector('[onclick="autoFillWithSensorData()"]');
+    const btn = document.querySelector('[onclick="fillWithSimulatedValues()"]');
     if (btn) {
         const originalText = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-check-circle"></i> Data Loaded!';
@@ -705,7 +572,7 @@ async function autoFillWithSensorData() {
     
     // Check backend connection
     try {
-        const response = await fetch('/health');
+        const response = await fetch(HEALTH_URL);
         if (response.ok) {
             console.log('✅ Backend is connected!');
             const connEl = getEl('connectionStatus');
@@ -823,50 +690,39 @@ function downloadQR() {
 }
 
 function createQRAnalysis(rawValue) {
-    const safeRawValue = typeof rawValue === 'string' ? rawValue.trim() : '';
-    let payload = {};
-    let isJsonPayload = false;
-
-    if (safeRawValue) {
-        try {
-            const parsed = JSON.parse(safeRawValue);
-            if (parsed && typeof parsed === 'object') {
-                payload = parsed;
-                isJsonPayload = true;
-            }
-        } catch {
-            payload = {};
-        }
+    let payload;
+    try {
+        payload = JSON.parse(String(rawValue || '').trim());
+    } catch {
+        return { hasMeasurements: false, error: 'QR content is not a JSON measurement record.' };
     }
-
-    const reading = sensorSim.getSingleReading();
-    const value = (keys, fallback) => {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        return { hasMeasurements: false, error: 'QR content must be a JSON measurement record.' };
+    }
+    const readNumber = (...keys) => {
         for (const key of keys) {
-            const number = Number(payload[key]);
-            if (Number.isFinite(number)) return number;
+            if (!Object.prototype.hasOwnProperty.call(payload, key)) continue;
+            const rawValue = payload[key];
+            if ((typeof rawValue !== 'number' && typeof rawValue !== 'string') || String(rawValue).trim() === '') return NaN;
+            return Number(rawValue);
         }
-        return fallback;
+        return NaN;
     };
-
-    const measurementKeys = [
-        'moisture', 'moisture_percent', 'protein', 'crude_protein', 'protein_percent',
-        'fiber', 'fiber_percent', 'energy', 'energy_value', 'ph', 'pH'
-    ];
-    const hasMeasurements = measurementKeys.some(key => Object.prototype.hasOwnProperty.call(payload, key));
-
+    const measurements = {
+        moisture: readNumber('moisture', 'moisture_percent'),
+        protein: readNumber('protein', 'crude_protein', 'protein_percent'),
+        fiber: readNumber('fiber', 'fiber_percent'),
+        energy: readNumber('energy', 'energy_value'),
+        ph: readNumber('ph', 'pH')
+    };
+    const hasMeasurements = Object.values(measurements).every(Number.isFinite);
     return {
-        rawValue: safeRawValue,
-        isJsonPayload,
         hasMeasurements,
-        isDemoData: !hasMeasurements,
+        error: hasMeasurements ? '' : 'QR record is missing one or more required measurements.',
         formData: {
-            sampleId: payload.sampleId || payload.sample_id || 'QR-' + Date.now().toString().slice(-6),
-            feedType: payload.feedType || payload.feed_type || 'cattle',
-            moisture: value(['moisture', 'moisture_percent'], reading.moisture),
-            protein: value(['protein', 'crude_protein', 'protein_percent'], reading.protein),
-            fiber: value(['fiber', 'fiber_percent'], reading.fiber),
-            energy: value(['energy', 'energy_value'], reading.energy),
-            ph: value(['ph', 'pH'], reading.ph)
+            ...measurements,
+            sampleId: payload.sample_id || payload.sampleId || 'QR-' + Date.now().toString().slice(-6),
+            feedType: String(payload.feed_type || payload.feedType || 'cattle').toLowerCase()
         }
     };
 }
@@ -890,282 +746,154 @@ document.querySelectorAll('.test-type-btn').forEach(btn => {
     });
 });
 
-// Updated form submission with backend integration
+function escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[character]));
+}
+
+function displayResults(formData, prediction, metadata = {}) {
+    const resultsDiv = getEl('testResults');
+    const contentDiv = getEl('resultsContent');
+    const advisoryP = getEl('advisoryText');
+    const timestampSpan = getEl('resultTimestamp');
+    if (!resultsDiv || !contentDiv || !advisoryP) return;
+
+    const analysis = prediction.analysis || {};
+    const values = [
+        ['Sample ID', metadata.test?.sample_id || (formData.sampleId === 'AUTO' ? 'Not saved' : formData.sampleId)],
+        ['Date', metadata.test?.timestamp ? new Date(metadata.test.timestamp).toLocaleString() : new Date().toLocaleString()],
+        ['Type', formData.feedType],
+        ['Moisture', `${formData.moisture}%`],
+        ['Protein', `${formData.protein}%`],
+        ['Fiber', `${formData.fiber}%`],
+        ['Energy', `${formData.energy} MJ/kg`],
+        ['pH', formData.ph]
+    ];
+    const issues = Array.isArray(analysis.issues) ? analysis.issues : [];
+    const recommendations = Array.isArray(analysis.recommendations) ? analysis.recommendations : [];
+    const limitation = metadata.limitations || 'This demonstration model was trained using generated data and has not been evaluated using labelled field data.';
+    const source = metadata.source || prediction.model_source || 'Existing Python analysis';
+
+    contentDiv.innerHTML = `
+        <div class="result-meta">${values.map(([label, value]) => `<div class="result-item"><strong>${escapeHTML(label)}</strong><span>${escapeHTML(value)}</span></div>`).join('')}</div>
+        <div class="result-item"><strong>Quality score</strong><span>${escapeHTML(prediction.score)} / 100</span></div>
+        <div class="result-item"><strong>Category</strong><span class="status status-${escapeHTML(String(prediction.quality || '').toLowerCase())}">${escapeHTML(prediction.quality)}</span></div>
+        <div class="result-item"><strong>Contamination assessment</strong><span>Not assessed by this model</span></div>
+        <div class="result-item"><strong>Parameters to review</strong><span>${issues.length ? issues.map(escapeHTML).join('<br>') : 'No parameter-specific flags were returned by the current model.'}</span></div>
+        <div class="result-item"><strong>Recommendations</strong><span>${recommendations.length ? recommendations.map(escapeHTML).join('<br>') : 'No specific recommendations were returned.'}</span></div>
+        <p class="model-limitations"><strong>Analysis source:</strong> ${escapeHTML(source)}<br>${escapeHTML(limitation)}</p>
+        ${metadata.test ? '' : '<p class="model-limitations">Not saved to test history. Sign in before analysis to save this result to your account.</p>'}
+    `;
+    advisoryP.textContent = analysis.advisory || 'The model did not return an advisory for this result.';
+    if (timestampSpan) timestampSpan.textContent = metadata.test?.timestamp ? new Date(metadata.test.timestamp).toLocaleString() : new Date().toLocaleString();
+    resultsDiv.style.display = 'block';
+}
+
+function offlineRulePrediction(values) {
+    let score = 0;
+    score += values.moisture >= 10 && values.moisture <= 15 ? 25 : values.moisture > 15 && values.moisture <= 20 ? 15 : 5;
+    score += values.protein >= 18 && values.protein <= 22 ? 25 : values.protein >= 15 && values.protein < 18 ? 15 : 5;
+    score += values.fiber >= 15 && values.fiber <= 18 ? 15 : (values.fiber >= 12 && values.fiber < 15) || (values.fiber > 18 && values.fiber <= 22) ? 10 : 5;
+    score += values.ph >= 5.5 && values.ph <= 7.5 ? 20 : values.ph >= 4.5 && values.ph < 5.5 ? 12 : 5;
+    score += values.energy >= 11 && values.energy <= 13 ? 15 : values.energy >= 10 && values.energy < 11 ? 10 : 5;
+    const quality = score >= 80 ? 'Good' : score >= 60 ? 'Moderate' : score >= 40 ? 'Poor' : 'Unsafe';
+    const issues = ['moisture', 'protein', 'fiber', 'ph', 'energy'].map(field =>
+        `${field}=${values[field]} (local rule-based demo input; not a safety determination)`
+    );
+    return {
+        quality,
+        score,
+        model_source: 'Local rule-based fallback; the trained Random Forest model was not reached',
+        analysis: {
+            issues,
+            recommendations: ['Confirm measurements using suitable methods and review feed decisions with a qualified animal nutrition professional.'],
+            advisory: `Offline demonstration rules assigned category ${quality} with score ${score}/100. This is not a validated feed-quality or safety determination.`
+        }
+    };
+}
+
 const _testForm = getEl('testForm');
 if (_testForm) {
-    _testForm.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const formData = {
-        sampleId: document.getElementById('sampleId').value || 'AUTO-' + Date.now().toString().slice(-6),
-        feedType: document.getElementById('feedType').value || 'cattle',
-        moisture: parseFloat(document.getElementById('moisture').value) || 0,
-        protein: parseFloat(document.getElementById('protein').value) || 0,
-        fiber: parseFloat(document.getElementById('fiber').value) || 0,
-        energy: parseFloat(document.getElementById('energy').value) || 0,
-        ph: parseFloat(document.getElementById('ph').value) || 7.0,
-        fermentation: document.getElementById('fermentation').value || 'good'
-    };
-    
-    if (!formData.moisture || !formData.protein) {
-        alert('⚠️ Please fill in moisture and protein values. Click "Auto-Fill" for simulated data.');
-        return;
-    }
-    
-    const result = analyzeFeed(formData);
-    displayResults(formData, result);
-    
-    // Send to backend if logged in
-    const token = localStorage.getItem('authToken');
-    let cloudSaved = false;
-    let qrData = null;
-    
-    if (token) {
-        const backendResult = await sendTestToBackend({
-            moisture: formData.moisture,
-            protein: formData.protein,
-            fiber: formData.fiber,
-            ph: formData.ph,
-            energy: formData.energy,
-            feed_type: formData.feedType,
-            aflatoxin: result.aflatoxin || 0,
-            contamination: result.contamination || 'None'
-        });
-        
-        if (backendResult) {
-            cloudSaved = true;
-            qrData = backendResult.qr_code || null;
-            console.log('✅ Test saved to cloud!');
-            await loadUserTests();
-            
-            // Display QR code if available
-            if (qrData) {
-                displayQRCode(qrData);
-            }
-        } else {
-            alert('❌ The analysis completed, but the test was not saved to the database. Please retry the submission.');
+    _testForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        const message = getEl('analysisMessage');
+        const loading = getEl('analysisLoading');
+        const submitButton = _testForm.querySelector('button[type="submit"]');
+        if (message) { message.hidden = true; message.textContent = ''; }
+        if (!_testForm.reportValidity()) return;
+
+        const formData = {
+            sampleId: getEl('sampleId').value.trim() || 'AUTO',
+            feedType: getEl('feedType').value,
+            moisture: Number(getEl('moisture').value),
+            protein: Number(getEl('protein').value),
+            fiber: Number(getEl('fiber').value),
+            energy: Number(getEl('energy').value),
+            ph: Number(getEl('ph').value)
+        };
+        if (!['moisture', 'protein', 'fiber', 'energy', 'ph'].every((field) => Number.isFinite(formData[field]))) {
+            if (message) { message.textContent = 'Enter a valid number for each required measurement.'; message.hidden = false; }
+            return;
         }
-    }
-    
-    const advisoryBox = document.getElementById('advisoryBox');
-    if (advisoryBox) {
-        const existingBadge = advisoryBox.querySelector('.cloud-badge');
-        if (existingBadge) existingBadge.remove();
 
-        const badge = document.createElement('div');
-        badge.className = 'cloud-badge';
-        badge.style.cssText = `
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            margin-top: 10px;
-            display: inline-block;
-            ${cloudSaved ? 'background: #4caf50; color: white;' : 'background: #ff9800; color: white;'}
-        `;
-        badge.innerHTML = cloudSaved ? '☁️ Saved to Cloud' : (token ? '⚠️ Save failed' : '💻 Saved Locally - Login to sync');
-        advisoryBox.appendChild(badge);
-    }
-
-    if (!token) {
-        sensorSim.addTestToHistory({
-            moisture: formData.moisture,
-            protein: formData.protein,
-            fiber: formData.fiber,
-            ph: formData.ph,
-            energy: formData.energy,
-            temperature: 30,
-            aflatoxin: result.aflatoxin || 0,
-            quality: result.quality,
-            score: result.score,
-            contamination: result.contamination || 'None'
-        });
-    }
-    
-    const resultsEl = getEl('testResults');
-    if (resultsEl) resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const token = localStorage.getItem('authToken');
+        if (loading) loading.hidden = false;
+        if (submitButton) submitButton.disabled = true;
+        try {
+            let responseData;
+            if (token) {
+                responseData = await sendTestToBackend({
+                    sample_id: formData.sampleId,
+                    feed_type: formData.feedType,
+                    moisture: formData.moisture,
+                    protein: formData.protein,
+                    fiber: formData.fiber,
+                    energy: formData.energy,
+                    ph: formData.ph
+                });
+            } else {
+                const response = await fetch(`${API_URL}/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        feed_type: formData.feedType, moisture: formData.moisture,
+                        protein: formData.protein, fiber: formData.fiber,
+                        energy: formData.energy, ph: formData.ph
+                    })
+                });
+                responseData = await response.json();
+                if (!response.ok) throw new Error(responseData.error || 'Analysis failed.');
+            }
+            displayResults(formData, responseData.prediction, {
+                test: responseData.test,
+                source: responseData.model_source || responseData.prediction?.model_source,
+                limitations: responseData.limitations
+            });
+            if (token) await loadUserTests();
+            getEl('testResults')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (error) {
+            if (error instanceof TypeError) {
+                const prediction = offlineRulePrediction(formData);
+                displayResults(formData, prediction, {
+                    limitations: 'Flask was unreachable. A local rule-based fallback was used; the saved Random Forest model was not run, and this result was not saved.'
+                });
+                if (message) {
+                    message.textContent = 'Flask is unavailable. Showing a clearly labelled local rule-based fallback; no database record was created.';
+                    message.hidden = false;
+                }
+                return;
+            }
+            if (message) {
+                message.textContent = error.message || 'Analysis failed. Confirm the Flask backend is running and retry.';
+                message.hidden = false;
+            }
+            console.error('Feed quality analysis failed:', error);
+        } finally {
+            if (loading) loading.hidden = true;
+            if (submitButton) submitButton.disabled = false;
+        }
     });
-}
-
-// ============================================
-// FEED ANALYSIS ENGINE
-// ============================================
-
-function analyzeFeed(data) {
-    const moisture = data.moisture;
-    const protein = data.protein;
-    const fiber = data.fiber;
-    const ph = data.ph || 7.0;
-    const energy = data.energy || 11.5;
-    
-    let score = 0;
-    let issues = [];
-    let recommendations = [];
-    let contamination = 'None';
-    let aflatoxin = Math.random() * 8;
-    
-    if (moisture >= 10 && moisture <= 15) {
-        score += 25;
-    } else if (moisture > 15 && moisture <= 20) {
-        score += 15;
-        issues.push('Moisture is high. Risk of mold growth.');
-        recommendations.push('Dry feed to 10-15% moisture.');
-    } else if (moisture < 10) {
-        score += 10;
-        issues.push('Feed is too dry. Reduced palatability.');
-        recommendations.push('Add moisture gradually.');
-    } else {
-        score += 5;
-        issues.push('Moisture dangerously high. Immediate action needed.');
-        recommendations.push('Stop feeding. Dry immediately or discard.');
-        contamination = 'Mold Risk';
-    }
-    
-    if (protein >= 18 && protein <= 22) {
-        score += 25;
-    } else if (protein >= 15 && protein < 18) {
-        score += 15;
-        issues.push('Protein below optimal level.');
-        recommendations.push('Supplement with protein-rich feed.');
-    } else if (protein > 22) {
-        score += 15;
-        issues.push('Protein above optimal. Monitor animal health.');
-        recommendations.push('Reduce protein supplementation.');
-    } else {
-        score += 5;
-        issues.push('Protein deficient. Critical for milk production.');
-        recommendations.push('Immediate protein supplementation needed.');
-    }
-    
-    if (fiber >= 15 && fiber <= 18) {
-        score += 15;
-    } else if (fiber >= 12 && fiber < 15) {
-        score += 10;
-        issues.push('Fiber slightly low. May affect rumen health.');
-        recommendations.push('Add roughage (hay, straw).');
-    } else if (fiber > 18 && fiber <= 22) {
-        score += 10;
-        issues.push('Fiber high. May reduce digestibility.');
-        recommendations.push('Balance with concentrate feed.');
-    } else {
-        score += 5;
-        issues.push('Fiber imbalance. Rumen health at risk.');
-        recommendations.push('Consult nutritionist for feed formulation.');
-    }
-    
-    if (ph >= 5.5 && ph <= 7.5) {
-        score += 20;
-    } else if (ph >= 4.5 && ph < 5.5) {
-        score += 12;
-        issues.push('pH is slightly acidic.');
-        recommendations.push('Monitor for spoilage. Use within 2-3 days.');
-    } else if (ph >= 3.8 && ph < 4.5) {
-        score += 12;
-    } else {
-        score += 5;
-        issues.push('pH imbalance. Spoilage risk.');
-        recommendations.push('Discard if spoilage signs present.');
-        contamination = 'Spoilage Detected';
-    }
-    
-    if (aflatoxin > 20) {
-        contamination = 'Aflatoxin Detected';
-        issues.push('Aflatoxin contamination detected!');
-        recommendations.push('DO NOT feed to animals. Discard immediately.');
-        score = Math.min(score, 20);
-    }
-    
-    let quality;
-    if (score >= 80) quality = 'Good';
-    else if (score >= 60) quality = 'Moderate';
-    else if (score >= 40) quality = 'Poor';
-    else quality = 'Unsafe';
-    
-    let advisory = '';
-    if (quality === 'Good') {
-        advisory = '✅ Feed quality is excellent! Continue current feeding regimen. Maintain regular monitoring for consistent quality.';
-    } else if (quality === 'Moderate') {
-        advisory = '⚠️ Feed quality is moderate. ' + issues.slice(0, 2).join(' ') + ' ' + recommendations.slice(0, 2).join(' ');
-    } else if (quality === 'Poor') {
-        advisory = '❌ Feed quality is poor. ' + issues.slice(0, 3).join(' ') + ' ' + recommendations.slice(0, 3).join(' ');
-    } else {
-        advisory = '🚨 UNSAFE - DO NOT FEED TO ANIMALS! ' + issues.join(' ') + ' ' + recommendations.join(' ');
-    }
-    
-    return {
-        quality: quality,
-        score: Math.round(score),
-        issues: issues,
-        recommendations: recommendations,
-        advisory: advisory,
-        contamination: contamination,
-        aflatoxin: Math.round(aflatoxin * 10) / 10
-    };
-}
-
-// ============================================
-// DISPLAY RESULTS
-// ============================================
-
-function displayResults(formData, result) {
-    const resultsDiv = document.getElementById('testResults');
-    const contentDiv = document.getElementById('resultsContent');
-    const advisoryP = document.getElementById('advisoryText');
-    const timestampSpan = document.getElementById('resultTimestamp');
-    
-    resultsDiv.style.display = 'block';
-    timestampSpan.textContent = new Date().toLocaleString();
-    
-    // Get quality label translation
-    const qualityLabel = t('quality_' + result.quality.toLowerCase());
-    
-    contentDiv.innerHTML = `
-        <div class="result-item">
-            <strong><i class="fas fa-tag"></i> ${t('sample_id')}</strong>
-            <span>${formData.sampleId}</span>
-        </div>
-        <div class="result-item">
-            <strong><i class="fas fa-list"></i> ${t('feed_type')}</strong>
-            <span>${t('feed_' + formData.feedType) || formData.feedType}</span>
-        </div>
-        <div class="result-item">
-            <strong><i class="fas fa-water"></i> ${t('moisture')}</strong>
-            <span>${formData.moisture}% <span class="status status-${formData.moisture >= 10 && formData.moisture <= 15 ? 'good' : formData.moisture > 20 ? 'danger' : 'warning'}">${formData.moisture >= 10 && formData.moisture <= 15 ? '✅ Optimal' : formData.moisture > 20 ? '⚠️ High' : '⚠️ Low'}</span></span>
-        </div>
-        <div class="result-item">
-            <strong><i class="fas fa-egg"></i> ${t('protein')}</strong>
-            <span>${formData.protein}% <span class="status status-${formData.protein >= 18 && formData.protein <= 22 ? 'good' : formData.protein < 15 ? 'danger' : 'warning'}">${formData.protein >= 18 && formData.protein <= 22 ? '✅ Optimal' : formData.protein < 15 ? '❌ Deficient' : '⚠️ Suboptimal'}</span></span>
-        </div>
-        <div class="result-item">
-            <strong><i class="fas fa-seedling"></i> ${t('fiber')}</strong>
-            <span>${formData.fiber}% <span class="status status-${formData.fiber >= 15 && formData.fiber <= 18 ? 'good' : formData.fiber < 12 || formData.fiber > 22 ? 'danger' : 'warning'}">${formData.fiber >= 15 && formData.fiber <= 18 ? '✅ Optimal' : formData.fiber < 12 ? '❌ Low' : formData.fiber > 22 ? '⚠️ High' : '⚠️ Suboptimal'}</span></span>
-        </div>
-        <div class="result-item">
-            <strong><i class="fas fa-bolt"></i> ${t('energy')}</strong>
-            <span>${formData.energy} MJ/kg</span>
-        </div>
-        <div class="result-item">
-            <strong><i class="fas fa-vial"></i> ${t('ph')}</strong>
-            <span>${formData.ph} <span class="status status-${formData.ph >= 5.5 && formData.ph <= 7.5 ? 'good' : formData.ph < 4.5 ? 'danger' : 'warning'}">${formData.ph >= 5.5 && formData.ph <= 7.5 ? '✅ Good' : formData.ph < 4.5 ? '⚠️ Acidic' : '⚠️ Slightly Off'}</span></span>
-        </div>
-        <div class="result-item">
-            <strong><i class="fas fa-biohazard"></i> ${t('contamination')}</strong>
-            <span class="status status-${result.contamination !== 'None' ? 'danger' : 'good'}">${result.contamination}</span>
-        </div>
-        <div class="result-item" style="border-top:2px solid #e8e8e8;margin-top:10px;padding-top:15px;">
-            <strong><i class="fas fa-star"></i> ${t('quality_score')}</strong>
-            <span style="font-size:1.2rem;font-weight:700;color:${result.score >= 80 ? '#4caf50' : result.score >= 60 ? '#ff9800' : '#f44336'}">${result.score}/100</span>
-        </div>
-        <div class="result-item" style="border-bottom:none;">
-            <strong><i class="fas fa-check-circle"></i> ${t('overall_quality')}</strong>
-            <span class="status status-${result.quality.toLowerCase()}" style="font-size:1rem;padding:5px 20px;">${qualityLabel}</span>
-        </div>
-    `;
-    
-    advisoryP.textContent = result.advisory;
-    resultsDiv.style.animation = 'none';
-    setTimeout(() => {
-        resultsDiv.style.animation = 'fadeInUp 0.5s ease';
-    }, 10);
 }
 
 // ============================================
@@ -1181,8 +909,13 @@ document.addEventListener('scroll', function() {
     }
 });
 
-document.getElementById('navToggle').addEventListener('click', function() {
-    document.querySelector('.nav-menu').classList.toggle('open');
+const navToggle = getEl('navToggle');
+if (navToggle) navToggle.addEventListener('click', function() {
+    const menu = document.querySelector('.nav-menu');
+    if (!menu) return;
+    const isOpen = menu.classList.toggle('open');
+    navToggle.setAttribute('aria-expanded', String(isOpen));
+    navToggle.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
 });
 
 function showToast(message) {
@@ -1222,11 +955,12 @@ function showToast(message) {
 // ============================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 SmartFeed AI System Initialized');
-    console.log('📡 Virtual Sensor Simulator Active');
+    loadMatlabSimulation();
+    console.log('🚀 DiaryLens software demo initialized');
+    console.log('📡 Simulated demo value generator active (no sensors connected)');
     console.log('🧠 AI Quality Prediction Engine Ready');
     console.log('🌐 Multi-Language Support Active');
-    console.log('☁️ Cloud Sync: ' + (localStorage.getItem('authToken') ? 'Enabled' : 'Disabled'));
+    console.log('☁️ Saved reports: ' + (localStorage.getItem('authToken') ? 'enabled' : 'sign-in required'));
     
     sensorSim.initChart();
     
@@ -1250,7 +984,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check backend
     setTimeout(async () => {
         try {
-            const response = await fetch('/health');
+            const response = await fetch(HEALTH_URL);
             if (response.ok) {
                 const connEl2 = getEl('connectionStatus');
                 if (connEl2) {
@@ -1268,6 +1002,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 2000);
     
     checkAuthStatus();
+
+    const applyDashboardFilters = getEl('applyDashboardFilters');
+    if (applyDashboardFilters) applyDashboardFilters.addEventListener('click', () => loadUserTests(dashboardFilterQuery()));
+    const clearDashboardFilters = getEl('clearDashboardFilters');
+    if (clearDashboardFilters) clearDashboardFilters.addEventListener('click', () => {
+        ['dashboardDateFrom', 'dashboardDateTo', 'dashboardFeedType'].forEach(id => { if (getEl(id)) getEl(id).value = ''; });
+        loadUserTests('');
+    });
+    const applyReportFilters = getEl('applyReportFilters');
+    if (applyReportFilters) applyReportFilters.addEventListener('click', loadSavedReports);
+    if (getEl('reportRecords')) loadSavedReports();
     
     // Close modals on outside click
     const loginModalEl = getEl('loginModal');
@@ -1316,6 +1061,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if (inputType === 'image' && imageActionButtons) imageActionButtons.style.display = 'flex';
         }
         updateAvailableInputsDisplay();
+
+        // Results belong to the previous input selection; clear them when selection changes.
+        const results = getEl('testResults');
+        const resultsContent = getEl('resultsContent');
+        const advisory = getEl('advisoryText');
+        if (results) results.style.display = 'none';
+        if (resultsContent) resultsContent.textContent = '';
+        if (advisory) advisory.textContent = 'Select an input and run an analysis to see guidance.';
+        ['analysisMessage', 'inputAnalysisMessage'].forEach(id => {
+            const error = getEl(id);
+            if (error) { error.textContent = ''; error.hidden = true; }
+        });
     }
 
     const qrScanBtn = getEl('qrScanBtn');
@@ -1324,6 +1081,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const imageTakePhotoBtn = getEl('imageTakePhotoBtn');
     const imageUploadBtn = getEl('imageUploadBtn');
     const imageUpload = getEl('imageUpload');
+    const removeImageBtn = getEl('removeImageBtn');
     let scannedQRValue = '';
 
     function showQRResult(rawValue) {
@@ -1575,7 +1333,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    const cardIds = ['inputCardImage','inputCardDetails','inputCardQR','inputCardHardware'];
+    const cardIds = ['inputCardImage','inputCardDetails','inputCardQR'];
     cardIds.forEach(id => {
         const el = getEl(id);
         if (el) {
@@ -1687,6 +1445,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    if (removeImageBtn) {
+        removeImageBtn.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (imageUpload) imageUpload.value = '';
+            const preview = getEl('imagePreview');
+            const previewImage = getEl('imagePreviewImage');
+            const fileName = getEl('imageFileName');
+            if (preview) preview.style.display = 'none';
+            if (previewImage) previewImage.removeAttribute('src');
+            if (fileName) fileName.textContent = '';
+            showToast('Image removed.');
+        });
+    }
+
     const analyzeBtn = getEl('analyzeSelectedBtn');
     if (analyzeBtn) {
         analyzeBtn.addEventListener('click', function(e) {
@@ -1697,87 +1470,54 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            const analysisMessage = getEl('inputAnalysisMessage');
+            const showInputMessage = (text) => {
+                if (analysisMessage) {
+                    analysisMessage.textContent = text;
+                    analysisMessage.hidden = false;
+                }
+            };
+
             if (selected.includes('image')) {
-                const imageFile = imageUpload && imageUpload.files ? imageUpload.files[0] : null;
+                const imageFile = imageUpload?.files?.[0];
                 if (!imageFile) {
-                    alert('Please choose a feed or silage image first.');
+                    showInputMessage('Choose an image first. The image is previewed only; this project does not include an image classification model. Use Details to analyze measured values.');
                     return;
                 }
-
-                const imageEstimate = sensorSim.getSingleReading();
-                const formData = {
-                    sampleId: 'IMAGE-' + Date.now().toString().slice(-6),
-                    feedType: 'cattle',
-                    moisture: imageEstimate.moisture,
-                    protein: imageEstimate.protein,
-                    fiber: imageEstimate.fiber,
-                    energy: imageEstimate.energy,
-                    ph: imageEstimate.ph,
-                    source: 'Image upload (demo estimate)'
-                };
-                const result = analyzeFeed(formData);
-                displayResults(formData, result);
-                showToast('✅ Image analyzed. Demo estimates are shown in the results.');
-
-                const resultsContent = getEl('resultsContent');
-                if (resultsContent) {
-                    resultsContent.insertAdjacentHTML('afterbegin', `
-                        <div style="margin-bottom:12px; color:var(--text-muted);">
-                            <strong>Source:</strong> ${imageFile.name}<br>
-                            <small>These are simulated estimates for this demo. A calibrated camera/NIR model is required for measured protein and nutrient values.</small>
-                        </div>
-                    `);
-                }
-                const resultsEl = getEl('testResults');
-                if (resultsEl) resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                showInputMessage('Image preview is available, but image-based quality analysis is not implemented. Select Details and enter measured values to run the existing Python model.');
                 return;
             }
 
             if (selected.includes('qr')) {
                 if (!scannedQRValue) {
-                    alert('Please scan or upload a QR code first.');
+                    showInputMessage('Scan or upload a QR record first.');
                     return;
                 }
-
                 const qrAnalysis = createQRAnalysis(scannedQRValue);
-                const detailsForm = {
-                    sampleId: document.getElementById('sampleId')?.value || '',
-                    feedType: document.getElementById('feedType')?.value || '',
-                    moisture: parseFloat(document.getElementById('moisture')?.value || '0') || 0,
-                    protein: parseFloat(document.getElementById('protein')?.value || '0') || 0,
-                    fiber: parseFloat(document.getElementById('fiber')?.value || '0') || 0,
-                    energy: parseFloat(document.getElementById('energy')?.value || '0') || 0,
-                    ph: parseFloat(document.getElementById('ph')?.value || '0') || 0
-                };
-
-                const hasManualDetails = selected.includes('details') && (
-                    detailsForm.sampleId || detailsForm.feedType || detailsForm.moisture || detailsForm.protein ||
-                    detailsForm.fiber || detailsForm.energy || detailsForm.ph
-                );
-
-                const formData = hasManualDetails
-                    ? {
-                        ...qrAnalysis.formData,
-                        ...Object.fromEntries(Object.entries(detailsForm).filter(([, value]) => value !== '' && value !== null && value !== undefined && !(typeof value === 'number' && Number.isNaN(value)))),
-                    }
-                    : qrAnalysis.formData;
-
-                formData.sampleId = formData.sampleId || qrAnalysis.formData.sampleId;
-                formData.feedType = formData.feedType || qrAnalysis.formData.feedType;
-
-                const result = analyzeFeed(formData);
-                displayResults(formData, result);
-                showToast(qrAnalysis.hasMeasurements ? '✅ QR code analyzed.' : '⚠️ QR decoded, but it did not contain feed measurement data; demo estimates are shown.');
-
-                const resultsContent = getEl('resultsContent');
-                if (resultsContent) {
-                    const sourceText = qrAnalysis.hasMeasurements
-                        ? 'Measurements loaded from QR data.'
-                        : 'QR code decoded successfully, but it did not contain feed measurement data. Simulated/demo values are shown for this project.';
-                    resultsContent.insertAdjacentHTML('afterbegin', `<div style="margin-bottom:12px; color:var(--text-muted);"><strong>Source:</strong> QR Code<br><small>${sourceText}</small></div>`);
+                if (!qrAnalysis.hasMeasurements) {
+                    showInputMessage(`${qrAnalysis.error} Expected moisture, protein, fiber, energy, and pH fields. No values were inferred.`);
+                    return;
                 }
-                const resultsEl = getEl('testResults');
-                if (resultsEl) resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                const formData = qrAnalysis.formData;
+                const feedType = getEl('feedType');
+                if (![...feedType.options].some(option => option.value === formData.feedType)) {
+                    showInputMessage('The QR record has an unsupported feed type.');
+                    return;
+                }
+                getEl('sampleId').value = formData.sampleId;
+                feedType.value = formData.feedType;
+                for (const field of ['moisture', 'protein', 'fiber', 'energy', 'ph']) {
+                    getEl(field).value = formData[field];
+                }
+                const wrapper = getEl('detailsFormWrapper');
+                if (wrapper) wrapper.style.display = 'block';
+                getEl('testForm')?.requestSubmit();
+                return;
+            }
+
+            if (selected.includes('details')) {
+                const detailsForm = getEl('testForm');
+                if (detailsForm) detailsForm.requestSubmit();
                 return;
             }
 
@@ -1795,18 +1535,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         <strong>Selected Inputs</strong>
                         <div style="margin-top:8px; font-weight:700; color:var(--primary-dark);">${selected.map(s => s.toUpperCase()).join(', ')}</div>
                     </div>
-                    <div style="margin-top:12px; color:var(--text-muted);">Note: Analysis will use only the selected inputs. Actual AI/QR/Hardware processing is not performed in this demo.</div>
+                    <div style="margin-top:12px; color:var(--text-muted);">These inputs do not provide measurements by themselves. Select Details and enter values to run the feed quality analysis.</div>
                 `;
+                const advisory = getEl('advisoryText');
+                if (advisory) {
+                    advisory.textContent = 'Input selection recorded. Select Details and enter measurements to run the feed quality analysis.';
+                }
             }
         });
     }
-    
-    setInterval(() => {
-        const statTime = document.getElementById('statTime');
-        if (statTime) {
-            statTime.textContent = Math.floor(Math.random() * 3 + 3);
-        }
-    }, 30000);
 });
 
-console.log('✅ SmartFeed Loaded Successfully!');
+console.log('✅ DiaryLens loaded successfully');

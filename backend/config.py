@@ -12,7 +12,7 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JWT_SECRET_KEY = 'jwt-secret-key-change-in-production'
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
-    CORS_ORIGINS = ['http://localhost:5500', 'http://127.0.0.1:5500', 'http://localhost:3000']
+    CORS_ORIGINS = ['http://localhost:5500', 'http://127.0.0.1:5500', 'http://localhost:5501', 'http://127.0.0.1:5501', 'http://localhost:3000']
     MODEL_PATH = 'ai_models/feed_quality_model.pkl'
     SCALER_PATH = 'ai_models/scaler.pkl'
     

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>SmartFeed - AI Feed Quality Testing System </title>
+    <title>DiaryLens - Software-Only Feed Quality Support</title>
     
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
@@ -24,11 +24,11 @@
                 <span>DiaryLens</span>
             </div>
             <ul class="nav-menu">
-                <li><a href="/" class="active" data-i18n="nav_home"><i class="fas fa-home"></i> Home</a></li>
-                <li><a href="/test" data-i18n="nav_test"><i class="fas fa-flask"></i> Test</a></li>
-                <li><a href="/dashboard" data-i18n="nav_dashboard"><i class="fas fa-chart-pie"></i> Dashboard</a></li>
-                <li><a href="/reports" data-i18n="nav_advisory"><i class="fas fa-list-check"></i> Advisory</a></li>
-                <li><a href="/about" data-i18n="nav_about"><i class="fas fa-info-circle"></i> About</a></li>
+                <li><a href="./index.html" class="active" data-i18n="nav_home"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="./test.html" data-i18n="nav_test"><i class="fas fa-flask"></i> Test</a></li>
+                <li><a href="./dashboard.html" data-i18n="nav_dashboard"><i class="fas fa-chart-pie"></i> Dashboard</a></li>
+                <li><a href="./reports.html" data-i18n="nav_advisory"><i class="fas fa-list-check"></i> Advisory</a></li>
+                <li><a href="./about.html" data-i18n="nav_about"><i class="fas fa-info-circle"></i> About</a></li>
             </ul>
             <div class="nav-right">
                 <div class="auth-buttons" id="authButtons">
@@ -56,7 +56,7 @@
                         <option value="mr">🇮🇳 मराठी</option>
                     </select>
                 </div>
-                <button class="nav-toggle" id="navToggle">
+                <button class="nav-toggle" id="navToggle" type="button" aria-label="Open navigation menu" aria-expanded="false">
                     <i class="fas fa-bars"></i>
                 </button>
             </div>
@@ -66,61 +66,33 @@
     <!-- ==================== HERO SECTION ==================== -->
     <section id="home" class="hero">
         <div class="hero-content">
-            <div class="hero-badge">
-                <i class="fas fa-microchip"></i> <span data-i18n="app_badge">AI-Powered • Smart India Hackathon 2026</span>
-            </div>
-                <h1 data-i18n="app_title">AI-Powered Portable Cattle Feed &amp; Silage Quality Intelligence</h1>
-                <p><span data-i18n="app_subtitle">Rapid on-field quality assessment for immediate feed-quality decisions.</span>
-                    <span class="highlight" data-i18n="results_time">Results in under 5 minutes!</span></p>
+            <h1 data-i18n="home_title">Cattle feed and silage quality support</h1>
+            <p data-i18n="home_description">Enter values from a feed report to view an estimate and practical next steps.</p>
             <div class="hero-buttons">
-                <button onclick="location.href='/test'" class="btn-primary">
-                    <i class="fas fa-microscope"></i> <span data-i18n="btn_start_test">Start Testing</span>
-                </button>
-                <button onclick="location.href='/dashboard'" class="btn-secondary">
-                    <i class="fas fa-chart-line"></i> <span data-i18n="btn_dashboard">View Dashboard</span>
-                </button>
-                <button onclick="autoFillWithSensorData()" class="btn-tertiary">
-                    <i class="fas fa-microchip"></i> <span data-i18n="btn_simulate">Simulate Sensors</span>
-                </button>
+                <a href="./test.html" class="btn-primary"><i class="fas fa-flask"></i> <span data-i18n="btn_start_test">Start a Feed Test</span></a>
+                <a href="./dashboard.html" class="btn-secondary"><i class="fas fa-chart-line"></i> <span data-i18n="btn_dashboard">View Dashboard</span></a>
             </div>
             <div class="hero-stats">
-                <div class="stat-card">
-                    <i class="fas fa-clock"></i>
-                    <h3 id="statTime">5</h3>
-                    <p>Minutes Results</p>
-                </div>
-                <div class="stat-card">
-                    <i class="fas fa-rupee-sign"></i>
-                    <h3>Low Cost</h3>
-                    <p>Affordable Testing</p>
-                </div>
-                <div class="stat-card">
-                    <i class="fas fa-mobile-alt"></i>
-                    <h3>Portable</h3>
-                    <p>Field Ready</p>
-                </div>
-                <div class="stat-card">
-                    <i class="fas fa-wifi"></i>
-                    <h3 id="connectionStatus">● Checking...</h3>
-                    <p>Cloud Sync</p>
-                </div>
+                <div class="stat-card"><i class="fas fa-keyboard"></i><h3 data-i18n="manual_input_title">Manual input</h3><p data-i18n="manual_input_desc">Use values from an existing feed report</p></div>
+                <div class="stat-card"><i class="fas fa-flask"></i><h3 data-i18n="demo_values_title">Demo values</h3><p data-i18n="demo_values_desc">Optional and clearly simulated</p></div>
+                <div class="stat-card"><i class="fas fa-database"></i><h3 data-i18n="saved_reports_title">Saved reports</h3><p data-i18n="saved_reports_desc">Stored in the local project database</p></div>
             </div>
         </div>
     </section>
 
     <!-- ==================== FEATURES (Landing) ==================== -->
     <section class="features-section">
-        <h2 class="section-title">Explore SmartFeed</h2>
-        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:20px; max-width:1000px; margin:0 auto;">
-            <a href="/test" class="dashboard-card" style="text-align:center; padding:30px;">
-                <h3><i class="fas fa-flask"></i> Test</h3>
-                <p>Run feed & silage analysis with virtual sensors.</p>
+        <h2 class="section-title" data-i18n="explore_title">Explore DiaryLens</h2>
+        <div class="features-grid">
+            <a href="./test.html" class="dashboard-card" style="text-align:center; padding:30px;">
+                <h3><i class="fas fa-flask"></i> <span data-i18n="nav_test">Test</span></h3>
+                <p data-i18n="explore_test_desc">Enter values manually or load clearly labelled simulated demo values.</p>
             </a>
-            <a href="/dashboard" class="dashboard-card" style="text-align:center; padding:30px;">
+            <a href="./dashboard.html" class="dashboard-card" style="text-align:center; padding:30px;">
                 <h3><i class="fas fa-chart-pie"></i> Dashboard</h3>
                 <p>View test history, metrics, and summaries.</p>
             </a>
-            <a href="/reports" class="dashboard-card" style="text-align:center; padding:30px;">
+            <a href="./reports.html" class="dashboard-card" style="text-align:center; padding:30px;">
                 <h3><i class="fas fa-file-alt"></i> Advisory & Reports</h3>
                 <p>Read advisories and previous analysis reports.</p>
             </a>
@@ -131,8 +103,8 @@
     <div id="loginModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
         <div style="background: white; padding: 30px; border-radius: 16px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
             <h3 style="margin-bottom: 20px; color: var(--primary-dark);"><i class="fas fa-sign-in-alt" style="color: var(--primary);"></i> Login</h3>
-            <input type="text" id="loginUsername" placeholder="Username" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-            <input type="password" id="loginPassword" placeholder="Password" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="text" id="loginUsername" aria-label="Username" placeholder="Username" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="password" id="loginPassword" aria-label="Password" placeholder="Password" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
             <button onclick="handleLogin()" class="btn-primary" style="width: 100%; justify-content: center;">Login</button>
             <button onclick="closeLoginModal()" style="width: 100%; margin-top: 10px; padding: 12px; border: none; background: #f5f5f5; border-radius: 8px; cursor: pointer; font-weight: 600;">Cancel</button>
         </div>
@@ -142,10 +114,10 @@
     <div id="registerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
         <div style="background: white; padding: 30px; border-radius: 16px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
             <h3 style="margin-bottom: 20px; color: var(--primary-dark);"><i class="fas fa-user-plus" style="color: var(--primary);"></i> Register</h3>
-            <input type="text" id="regUsername" placeholder="Username *" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-            <input type="email" id="regEmail" placeholder="Email *" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-            <input type="text" id="regFullName" placeholder="Full Name" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-            <input type="password" id="regPassword" placeholder="Password *" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="text" id="regUsername" aria-label="Username" placeholder="Username *" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="email" id="regEmail" aria-label="Email" placeholder="Email *" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="text" id="regFullName" aria-label="Full name" placeholder="Full Name" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="password" id="regPassword" aria-label="Password" placeholder="Password *" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
             <button onclick="handleRegister()" class="btn-primary" style="width: 100%; justify-content: center;">Register</button>
             <button onclick="closeRegisterModal()" style="width: 100%; margin-top: 10px; padding: 12px; border: none; background: #f5f5f5; border-radius: 8px; cursor: pointer; font-weight: 600;">Cancel</button>
         </div>
@@ -155,8 +127,8 @@
     <footer>
         <div class="footer-content">
             <div class="footer-section">
-                <h4><i class="fas fa-cow"></i> SmartFeed</h4>
-                <p>AI-Powered Portable Cattle Feed &amp; Silage Quality Intelligence</p>
+                <h4><i class="fas fa-cow"></i> DiaryLens</h4>
+                <p>Software prototype for cattle feed &amp; silage quality support</p>
                 <p><small>Smart India Hackathon 2026 - SIH26111</small></p>
                 <div class="social-links">
                     <a href="#"><i class="fab fa-github"></i></a>
@@ -179,10 +151,10 @@
                 <h4>Technologies</h4>
                 <ul>
                     <li>🧠 AI/ML</li>
-                    <li>📡 IoT Sensors</li>
-                    <li>🔬 NIR Spectroscopy</li>
-                    <li>☁️ Cloud Analytics</li>
-                    <li>📱 Mobile App</li>
+                    <li>📡 Software-generated demo readings</li>
+                    <li>🔬 Python AI/ML model</li>
+                    <li>☁️ Local SQLite history</li>
+                    <li>📱 Mobile-friendly web UI</li>
                 </ul>
             </div>
             <div class="footer-section">
@@ -193,7 +165,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2026 SmartFeed - SIH26111. All rights reserved. | Made with ❤️ for Indian Dairy Farmers</p>
+            <p>&copy; 2026 DiaryLens - SIH26111. All rights reserved. | Made with ❤️ for Indian Dairy Farmers</p>
         </div>
     </footer>
 

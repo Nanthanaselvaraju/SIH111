@@ -65,6 +65,15 @@ class FeedTest(db.Model):
             'quality_label': self.quality_label,
             'contamination': self.contamination,
             'advisory': self.advisory,
-            'recommendations': json.loads(self.recommendations) if self.recommendations else [],
+            'recommendations': self._recommendations(),
             'timestamp': self.timestamp.isoformat() if self.timestamp else None
         }
+
+    def _recommendations(self):
+        if not self.recommendations:
+            return []
+        try:
+            decoded = json.loads(self.recommendations)
+            return decoded if isinstance(decoded, list) else []
+        except (TypeError, json.JSONDecodeError):
+            return []

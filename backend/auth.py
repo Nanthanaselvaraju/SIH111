@@ -8,7 +8,9 @@ from datetime import datetime
 bcrypt = Bcrypt()
 
 def register_user():
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Request body must be a JSON object.'}), 400
     
     if not data.get('username') or not data.get('email') or not data.get('password'):
         return jsonify({'error': 'Username, email and password required'}), 400
@@ -37,7 +39,9 @@ def register_user():
     }), 201
 
 def login_user():
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Request body must be a JSON object.'}), 400
     
     if not data.get('username') or not data.get('password'):
         return jsonify({'error': 'Username and password required'}), 400

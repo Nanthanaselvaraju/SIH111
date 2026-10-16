@@ -13,6 +13,7 @@ class FeedQualityAI:
         self.regressor = None
         self.scaler = None
         self.is_trained = False
+        self.model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ai_models')
         
     def generate_training_data(self, n_samples=5000):
         np.random.seed(42)
@@ -102,22 +103,22 @@ class FeedQualityAI:
         
         self.is_trained = True
         
-        os.makedirs('ai_models', exist_ok=True)
-        joblib.dump(self.classifier, 'ai_models/feed_quality_model.pkl')
-        joblib.dump(self.regressor, 'ai_models/feed_quality_regressor.pkl')
-        joblib.dump(self.scaler, 'ai_models/scaler.pkl')
+        os.makedirs(self.model_dir, exist_ok=True)
+        joblib.dump(self.classifier, os.path.join(self.model_dir, 'feed_quality_model.pkl'))
+        joblib.dump(self.regressor, os.path.join(self.model_dir, 'feed_quality_regressor.pkl'))
+        joblib.dump(self.scaler, os.path.join(self.model_dir, 'scaler.pkl'))
         
         print("AI model trained and saved.")
         return True
     
     def load_model(self):
         try:
-            self.classifier = joblib.load('ai_models/feed_quality_model.pkl')
-            self.regressor = joblib.load('ai_models/feed_quality_regressor.pkl')
-            self.scaler = joblib.load('ai_models/scaler.pkl')
+            self.classifier = joblib.load(os.path.join(self.model_dir, 'feed_quality_model.pkl'))
+            self.regressor = joblib.load(os.path.join(self.model_dir, 'feed_quality_regressor.pkl'))
+            self.scaler = joblib.load(os.path.join(self.model_dir, 'scaler.pkl'))
             self.is_trained = True
             return True
-        except:
+        except (OSError, ValueError, EOFError, ImportError):
             return False
     
     def predict_quality(self, moisture, protein, fiber, ph, energy):
@@ -135,7 +136,7 @@ class FeedQualityAI:
         return {
             'quality': quality_label,
             'score': round(quality_score),
-            'confidence': 85.0,
+            'model_source': 'Saved Random Forest model (trained on generated demonstration data; not evaluated on labelled field data)',
             'analysis': self.generate_analysis(moisture, protein, fiber, ph, energy, quality_label, quality_score)
         }
     
@@ -171,41 +172,34 @@ class FeedQualityAI:
         return {
             'quality': quality,
             'score': round(score),
-            'confidence': 75.0,
+            'model_source': 'Rule-based fallback (model artifacts unavailable)',
             'analysis': self.generate_analysis(moisture, protein, fiber, ph, energy, quality, score)
         }
     
     def generate_analysis(self, moisture, protein, fiber, ph, energy, quality, score):
+        # These ranges mirror the synthetic labels used to train this demo model.
+        checks = [
+            ('Moisture', moisture, 10, 15),
+            ('Protein', protein, 18, 22),
+            ('Fiber', fiber, 15, 18),
+            ('pH', ph, 5.5, 7.5),
+            ('Energy', energy, 11, 13),
+        ]
         issues = []
         recommendations = []
-        
-        if 10 <= moisture <= 15:
-            issues.append("✅ Moisture is optimal")
-        elif moisture > 20:
-            issues.append("❌ Moisture too high - risk of mold")
-            recommendations.append("Dry feed to 10-15% moisture")
-        elif moisture < 10:
-            issues.append("⚠️ Moisture too low")
-            recommendations.append("Add moisture gradually")
-        
-        if 18 <= protein <= 22:
-            issues.append("✅ Protein is optimal")
-        elif protein < 15:
-            issues.append("❌ Protein deficient")
-            recommendations.append("Add protein-rich supplements")
-        elif 15 <= protein < 18:
-            issues.append("⚠️ Protein below optimal")
-            recommendations.append("Supplement with protein sources")
-        
-        if quality == 'Good':
-            advisory = "Feed quality is excellent. Continue current feeding regimen."
-        elif quality == 'Moderate':
-            advisory = "Feed quality is moderate. " + " ".join(recommendations[:2])
-        elif quality == 'Poor':
-            advisory = "Feed quality is poor. " + " ".join(recommendations[:3])
-        else:
-            advisory = "⚠️ UNSAFE - DO NOT FEED! " + " ".join(recommendations)
-        
+        for name, value, lower, upper in checks:
+            if lower <= value <= upper:
+                issues.append(f'{name} is within the preferred range used in generated training examples.')
+            else:
+                issues.append(f'{name} is outside the preferred range used in generated training examples.')
+                recommendations.append(
+                    f'Confirm the {name.lower()} value and review it with a qualified animal nutrition professional.'
+                )
+
+        advisory = (
+            f'The demonstration model assigned category {quality} with score {round(score)}/100. '
+            'This output is based on generated training labels and is not a validated feed-quality or safety determination.'
+        )
         return {
             'issues': issues,
             'recommendations': recommendations,
@@ -214,7 +208,7 @@ class FeedQualityAI:
 
 # Initialize and train model
 ai_model = FeedQualityAI()
-if not os.path.exists('ai_models/feed_quality_model.pkl'):
+if not os.path.exists(os.path.join(ai_model.model_dir, 'feed_quality_model.pkl')):
     print("No saved AI model found; training a new model...")
     ai_model.train_model()
 else:

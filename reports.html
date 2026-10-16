@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Reports / Advisory - SmartFeed</title>
+    <title>Reports / Advisory - DiaryLens</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link rel="stylesheet" href="css/style.css"/>
@@ -16,11 +16,11 @@
                 <span>DiaryLens</span>
             </div>
             <ul class="nav-menu">
-                <li><a href="/" data-i18n="nav_home"><i class="fas fa-home"></i> Home</a></li>
-                <li><a href="/test" data-i18n="nav_test"><i class="fas fa-flask"></i> Test</a></li>
-                <li><a href="/dashboard" data-i18n="nav_dashboard"><i class="fas fa-chart-pie"></i> Dashboard</a></li>
-                <li><a href="/reports" class="active" data-i18n="nav_advisory"><i class="fas fa-list-check"></i> Advisory</a></li>
-                <li><a href="/about" data-i18n="nav_about"><i class="fas fa-info-circle"></i> About</a></li>
+                <li><a href="./index.html" data-i18n="nav_home"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="./test.html" data-i18n="nav_test"><i class="fas fa-flask"></i> Test</a></li>
+                <li><a href="./dashboard.html" data-i18n="nav_dashboard"><i class="fas fa-chart-pie"></i> Dashboard</a></li>
+                <li><a href="./reports.html" class="active" data-i18n="nav_advisory"><i class="fas fa-list-check"></i> Advisory</a></li>
+                <li><a href="./about.html" data-i18n="nav_about"><i class="fas fa-info-circle"></i> About</a></li>
             </ul>
             <div class="nav-right">
                 <div class="auth-buttons" id="authButtons">
@@ -48,7 +48,7 @@
                         <option value="mr">🇮🇳 मराठी</option>
                     </select>
                 </div>
-                <button class="nav-toggle" id="navToggle">
+                <button class="nav-toggle" id="navToggle" type="button" aria-label="Open navigation menu" aria-expanded="false">
                     <i class="fas fa-bars"></i>
                 </button>
             </div>
@@ -57,43 +57,25 @@
 
     <section id="advisory" class="advisory-section">
         <h2 class="section-title"><i class="fas fa-list-check"></i> <span data-i18n="advisory_section">Feed Advisories</span></h2>
-        <div class="advisory-grid">
-            <div class="advisory-card">
-                <i class="fas fa-water"></i>
-                <h3 data-i18n="advisory_moisture">Moisture Management</h3>
-                <p data-i18n="advisory_moisture_desc">Optimal levels: 10-12% for feed, 40-60% for silage</p>
-                <span class="status status-good" data-i18n="status_good">Good</span>
+        <p class="text-muted">The guidance cards below are general educational information, not individualized test results or validated safety limits.</p>
+        <div class="dashboard-card report-history-card">
+            <h3>Saved test reports</h3>
+            <div class="report-filters">
+                <label>Search ID <input type="search" id="reportSearch" placeholder="Sample ID"></label>
+                <label>Type <select id="reportTypeFilter"><option value="">All types</option><option value="cattle">Cattle feed</option><option value="silage">Silage</option><option value="fodder">Green fodder</option><option value="concentrate">Concentrate</option><option value="mineral">Mineral mixture</option></select></label>
+                <button class="btn-secondary" id="applyReportFilters" type="button">Search</button>
             </div>
-            <div class="advisory-card">
-                <i class="fas fa-egg"></i>
-                <h3 data-i18n="advisory_protein">Protein Requirements</h3>
-                <p data-i18n="advisory_protein_desc">18-22% crude protein recommended for lactating cattle</p>
-                <span class="status status-warning" data-i18n="status_warning">Monitor</span>
-            </div>
-            <div class="advisory-card">
-                <i class="fas fa-seedling"></i>
-                <h3 data-i18n="advisory_fiber">Fiber Content</h3>
-                <p data-i18n="advisory_fiber_desc">15-18% fiber for optimal rumen function</p>
-                <span class="status status-good" data-i18n="status_good">Good</span>
-            </div>
-            <div class="advisory-card">
-                <i class="fas fa-biohazard"></i>
-                <h3 data-i18n="advisory_contamination">Contamination Alert</h3>
-                <p data-i18n="advisory_contamination_desc">Regular monitoring for aflatoxins and mycotoxins</p>
-                <span class="status status-alert" data-i18n="status_alert">Alert</span>
-            </div>
-            <div class="advisory-card">
-                <i class="fas fa-temperature-high"></i>
-                <h3 data-i18n="advisory_storage">Storage Conditions</h3>
-                <p data-i18n="advisory_storage_desc">Store in cool, dry place below 25°C</p>
-                <span class="status status-warning" data-i18n="status_warning">Monitor</span>
-            </div>
-            <div class="advisory-card">
-                <i class="fas fa-clock"></i>
-                <h3 data-i18n="advisory_feeding">Feeding Schedule</h3>
-                <p data-i18n="advisory_feeding_desc">Fresh feed twice daily, check for spoilage</p>
-                <span class="status status-good" data-i18n="status_good">Good</span>
-            </div>
+            <p id="reportHistoryMessage" class="text-muted" role="status">Sign in to view saved test reports.</p>
+            <div id="reportRecords"></div>
+            <article id="reportDetail" class="saved-report-detail" hidden></article>
+        </div>
+        <div class="advisory-grid software-advisory-grid">
+            <article class="advisory-card"><i class="fas fa-brain"></i><h3>Prototype model estimate</h3><p>The Python model estimates a category from entered nutrition values. It was trained on generated demonstration data and is not validated on field samples.</p></article>
+            <article class="advisory-card"><i class="fas fa-list-check"></i><h3>Values to enter</h3><p>Use moisture, crude protein, fibre, energy and pH values from a feed report or laboratory result. The form's accepted ranges are input bounds, not safety limits.</p></article>
+            <article class="advisory-card"><i class="fas fa-triangle-exclamation"></i><h3>Contamination tests are not included</h3><p>This software does not test for aflatoxin, mycotoxins, mould, adulteration or mineral deficiency. Use a qualified laboratory for these checks.</p></article>
+            <article class="advisory-card"><i class="fas fa-leaf"></i><h3>Silage demo</h3><p>The optional MATLAB CSV shows simulated temperature, moisture and pH. Its configurable thresholds are illustrative only; no sensor is connected.</p></article>
+            <article class="advisory-card"><i class="fas fa-clipboard-check"></i><h3>Practical review</h3><p>Check the sample label, collection date and units before entering a value. Compare the estimate with the original report and seek expert advice when needed.</p></article>
+            <article class="advisory-card"><i class="fas fa-warehouse"></i><h3>Storage basics</h3><p>Keep feed protected from moisture, pests and direct contamination. Follow local agricultural guidance for storage and discard visibly spoiled feed safely.</p></article>
         </div>
     </section>
 
@@ -101,8 +83,8 @@
     <div id="loginModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
         <div style="background: white; padding: 30px; border-radius: 16px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
             <h3 style="margin-bottom: 20px; color: var(--primary-dark);"><i class="fas fa-sign-in-alt" style="color: var(--primary);"></i> Login</h3>
-            <input type="text" id="loginUsername" placeholder="Username" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-            <input type="password" id="loginPassword" placeholder="Password" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="text" id="loginUsername" aria-label="Username" placeholder="Username" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="password" id="loginPassword" aria-label="Password" placeholder="Password" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
             <button onclick="handleLogin()" class="btn-primary" style="width: 100%; justify-content: center;">Login</button>
             <button onclick="closeLoginModal()" style="width: 100%; margin-top: 10px; padding: 12px; border: none; background: #f5f5f5; border-radius: 8px; cursor: pointer; font-weight: 600;">Cancel</button>
         </div>
@@ -111,10 +93,10 @@
     <div id="registerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
         <div style="background: white; padding: 30px; border-radius: 16px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
             <h3 style="margin-bottom: 20px; color: var(--primary-dark);"><i class="fas fa-user-plus" style="color: var(--primary);"></i> Register</h3>
-            <input type="text" id="regUsername" placeholder="Username *" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-            <input type="email" id="regEmail" placeholder="Email *" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-            <input type="text" id="regFullName" placeholder="Full Name" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-            <input type="password" id="regPassword" placeholder="Password *" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="text" id="regUsername" aria-label="Username" placeholder="Username *" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="email" id="regEmail" aria-label="Email" placeholder="Email *" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="text" id="regFullName" aria-label="Full name" placeholder="Full Name" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="password" id="regPassword" aria-label="Password" placeholder="Password *" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
             <button onclick="handleRegister()" class="btn-primary" style="width: 100%; justify-content: center;">Register</button>
             <button onclick="closeRegisterModal()" style="width: 100%; margin-top: 10px; padding: 12px; border: none; background: #f5f5f5; border-radius: 8px; cursor: pointer; font-weight: 600;">Cancel</button>
         </div>
@@ -123,8 +105,8 @@
     <footer>
         <div class="footer-content">
             <div class="footer-section">
-                <h4><i class="fas fa-cow"></i> SmartFeed</h4>
-                <p>AI-Powered Portable Cattle Feed &amp; Silage Quality Intelligence</p>
+                <h4><i class="fas fa-cow"></i> DiaryLens</h4>
+                <p>Software prototype for cattle feed &amp; silage quality support</p>
                 <p><small>Smart India Hackathon 2026 - SIH26111</small></p>
                 <div class="social-links">
                     <a href="#"><i class="fab fa-github"></i></a>
@@ -136,21 +118,21 @@
             <div class="footer-section">
                 <h4>Quick Links</h4>
                 <ul>
-                    <li><a href="/">Home</a></li>
-                    <li><a href="/test">Test Feed</a></li>
-                    <li><a href="/dashboard">Dashboard</a></li>
-                    <li><a href="/reports">Advisory</a></li>
-                    <li><a href="/about">About</a></li>
+                    <li><a href="./index.html">Home</a></li>
+                    <li><a href="./test.html">Test Feed</a></li>
+                    <li><a href="./dashboard.html">Dashboard</a></li>
+                    <li><a href="./reports.html">Advisory</a></li>
+                    <li><a href="./about.html">About</a></li>
                 </ul>
             </div>
             <div class="footer-section">
                 <h4>Technologies</h4>
                 <ul>
                     <li>🧠 AI/ML</li>
-                    <li>📡 IoT Sensors</li>
-                    <li>🔬 NIR Spectroscopy</li>
-                    <li>☁️ Cloud Analytics</li>
-                    <li>📱 Mobile App</li>
+                    <li>📡 Software-generated demo readings</li>
+                    <li>🔬 Python AI/ML model</li>
+                    <li>☁️ Local SQLite history</li>
+                    <li>📱 Mobile-friendly web UI</li>
                 </ul>
             </div>
             <div class="footer-section">
@@ -161,7 +143,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2026 SmartFeed - SIH26111. All rights reserved. | Made with ❤️ for Indian Dairy Farmers</p>
+            <p>&copy; 2026 DiaryLens - SIH26111. All rights reserved. | Made with ❤️ for Indian Dairy Farmers</p>
         </div>
     </footer>
 

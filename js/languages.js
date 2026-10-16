@@ -23,7 +23,7 @@ const translations = {
         'btn_dashboard': 'View Dashboard',
         'btn_simulate': 'Simulate Sensors',
         'btn_analyze': 'Analyze Sample',
-        'btn_auto_fill': 'Auto-Fill from Virtual Sensors',
+        'btn_auto_fill': 'Fill with simulated demo values',
         'btn_print': 'Print Results',
         'btn_save': 'Save Result',
         'btn_share': 'Share',
@@ -111,16 +111,16 @@ const translations = {
         'cancel': 'Cancel',
         
         // Sensor Status
-        'sensor_active': 'Virtual Sensors Active',
+        'sensor_active': 'Simulated Readings Active',
         'cloud_sync': 'Cloud Sync Active',
         'local_mode': 'Local Mode - Login to sync',
         'online': 'Online',
         'offline': 'Offline',
         
         // About
-        'about_title': 'About SmartFeed',
+        'about_title': 'About DiaryLens',
         'about_mission': 'Mission',
-        'about_mission_text': 'To empower dairy farmers with affordable, rapid, and accurate feed quality testing using AI and sensor technology.',
+        'about_mission_text': 'To help dairy farmers understand feed quality with an AI-based software analysis and clearly labelled simulated demo readings.',
         'about_technology': 'Technology',
         'about_team': 'Team',
         'about_impact': 'Impact',
@@ -152,7 +152,7 @@ const translations = {
         'btn_dashboard': 'डैशबोर्ड देखें',
         'btn_simulate': 'सेंसर सिम्युलेट करें',
         'btn_analyze': 'नमूना का विश्लेषण करें',
-        'btn_auto_fill': 'वर्चुअल सेंसर से ऑटो-भरें',
+        'btn_auto_fill': 'डेमो मान भरें',
         'btn_print': 'परिणाम प्रिंट करें',
         'btn_save': 'परिणाम सहेजें',
         'btn_share': 'साझा करें',
@@ -230,7 +230,7 @@ const translations = {
         'full_name': 'पूरा नाम',
         'cancel': 'रद्द करें',
         
-        'sensor_active': 'वर्चुअल सेंसर सक्रिय',
+        'sensor_active': 'सिम्युलेटेड डेमो रीडिंग सक्रिय',
         'cloud_sync': 'क्लाउड सिंक सक्रिय',
         'local_mode': 'स्थानीय मोड - सिंक के लिए लॉगिन करें',
         'online': 'ऑनलाइन',
@@ -238,7 +238,7 @@ const translations = {
         
         'about_title': 'स्मार्टफीड के बारे में',
         'about_mission': 'मिशन',
-        'about_mission_text': 'एआई और सेंसर तकनीक का उपयोग करके किफायती, तेज और सटीक चारा गुणवत्ता परीक्षण के साथ डेयरी किसानों को सशक्त बनाना।',
+        'about_mission_text': 'एआई-आधारित सॉफ़्टवेयर विश्लेषण और स्पष्ट रूप से चिह्नित सिम्युलेटेड डेमो रीडिंग से डेयरी किसानों को चारा गुणवत्ता समझने में मदद करना।',
         'about_technology': 'तकनीक',
         'about_team': 'टीम',
         'about_impact': 'प्रभाव',
@@ -269,7 +269,7 @@ const translations = {
         'btn_dashboard': 'டாஷ்போர்டை காண்க',
         'btn_simulate': 'உணரிகளை உருவகப்படுத்து',
         'btn_analyze': 'மாதிரியை பகுப்பாய்வு செய்',
-        'btn_auto_fill': 'மெய்நிகர் உணரிகளிலிருந்து தானாக நிரப்பு',
+        'btn_auto_fill': 'செயற்கை டெமோ மதிப்புகளை நிரப்பவும்',
         'btn_print': 'முடிவுகளை அச்சிடுக',
         'btn_save': 'முடிவுகளை சேமி',
         'btn_share': 'பகிர்',
@@ -346,15 +346,15 @@ const translations = {
         'full_name': 'முழு பெயர்',
         'cancel': 'ரத்து செய்',
         
-        'sensor_active': 'மெய்நிகர் உணரிகள் செயலில்',
+        'sensor_active': 'செயற்கை டெமோ அளவீடுகள் செயலில்',
         'cloud_sync': 'கிளவுட் ஒத்திசைவு செயலில்',
         'local_mode': 'உள்ளூர் முறை - ஒத்திசைக்க உள்நுழையவும்',
         'online': 'இணைப்பில்',
         'offline': 'இணைப்பில்லை',
 
-        'about_title': 'SmartFeed பற்றி',
+        'about_title': 'DiaryLens பற்றி',
         'about_mission': 'நோக்கம்',
-        'about_mission_text': 'AI மற்றும் சென்சார் தொழில்நுட்பத்தைப் பயன்படுத்தி மலிவான, விரைவான மற்றும் துல்லியமான தீவன தர சோதனையை பால் விவசாயிகளுக்கு வழங்குதல்.',
+        'about_mission_text': 'AI அடிப்படையிலான மென்பொருள் பகுப்பாய்வு மற்றும் தெளிவாகக் குறிக்கப்பட்ட உருவகப்படுத்தப்பட்ட டெமோ அளவீடுகள் மூலம் தீவனத் தரத்தைப் புரிந்துகொள்ள பால் விவசாயிகளுக்கு உதவுதல்.',
         'about_technology': 'தொழில்நுட்பம்',
         'about_team': 'குழு',
         'about_impact': 'தாக்கம்',
@@ -382,7 +382,7 @@ const translations = {
         'btn_dashboard': 'డాష్బోర్డ్ చూడండి',
         'btn_simulate': 'సెన్సార్లను అనుకరించండి',
         'btn_analyze': 'నమూనాను విశ్లేషించండి',
-        'btn_auto_fill': 'వర్చువల్ సెన్సార్ల నుండి ఆటో-ఫిల్',
+        'btn_auto_fill': 'అనుకరణ డెమో విలువలను నింపండి',
         'btn_print': 'ఫలితాలను ప్రింట్ చేయండి',
         'btn_save': 'ఫలితాలను సేవ్ చేయండి',
         'btn_share': 'షేర్ చేయండి',
@@ -460,9 +460,9 @@ const translations = {
         'online': 'ఆన్‌లైన్',
         'offline': 'ఆఫ్‌లైన్'
         ,
-        'about_title': 'SmartFeed గురించి',
+        'about_title': 'DiaryLens గురించి',
         'about_mission': 'లక్ష్యం',
-        'about_mission_text': 'AI మరియు సెన్సార్ సాంకేతికతతో సరసమైన, వేగవంతమైన మరియు ఖచ్చితమైన మేత నాణ్యత పరీక్షను పాడి రైతులకు అందించడం.',
+        'about_mission_text': 'AI ఆధారిత సాఫ్ట్‌వేర్ విశ్లేషణ మరియు స్పష్టంగా గుర్తించిన అనుకరణ డెమో రీడింగ్‌లతో పశుగ్రాస నాణ్యతను అర్థం చేసుకోవడంలో రైతులకు సహాయపడటం.',
         'about_technology': 'సాంకేతికత',
         'about_team': 'బృందం',
         'about_impact': 'ప్రభావం'
@@ -487,7 +487,7 @@ const translations = {
         'btn_dashboard': 'डॅशबोर्ड पहा',
         'btn_simulate': 'सेन्सर सिम्युलेट करा',
         'btn_analyze': 'नमुन्याचे विश्लेषण करा',
-        'btn_auto_fill': 'व्हर्च्युअल सेन्सरमधून ऑटो-भरा',
+        'btn_auto_fill': 'सिम्युलेटेड डेमो मूल्ये भरा',
         'btn_print': 'निकाल प्रिंट करा',
         'btn_save': 'निकाल जतन करा',
         'btn_share': 'शेअर करा',
@@ -565,14 +565,76 @@ const translations = {
         'online': 'ऑनलाइन',
         'offline': 'ऑफलाइन'
         ,
-        'about_title': 'SmartFeed बद्दल',
+        'about_title': 'DiaryLens बद्दल',
         'about_mission': 'ध्येय',
-        'about_mission_text': 'AI आणि सेन्सर तंत्रज्ञानाच्या मदतीने दुग्ध उत्पादक शेतकऱ्यांना स्वस्त, जलद आणि अचूक चारा गुणवत्ता चाचणी उपलब्ध करून देणे.',
+        'about_mission_text': 'AI-आधारित सॉफ्टवेअर विश्लेषण आणि स्पष्टपणे दर्शविलेल्या सिम्युलेटेड डेमो रीडिंगद्वारे चारा गुणवत्ता समजून घेण्यास दुग्ध उत्पादक शेतकऱ्यांना मदत करणे.',
         'about_technology': 'तंत्रज्ञान',
         'about_team': 'संघ',
         'about_impact': 'परिणाम'
     }
 };
+
+// Home page copy. Kept separate so every page can fall back to English safely.
+Object.assign(translations.en, {
+    home_title: 'Cattle feed and silage quality support',
+    home_description: 'Enter values from a feed report to view an estimate and practical next steps.',
+    manual_input_title: 'Manual input',
+    manual_input_desc: 'Use values from an existing feed report',
+    demo_values_title: 'Demo values',
+    demo_values_desc: 'Optional and clearly simulated',
+    saved_reports_title: 'Saved reports',
+    saved_reports_desc: 'Stored in the local project database',
+    explore_title: 'Explore DiaryLens',
+    explore_test_desc: 'Enter values manually or load clearly labelled simulated demo values.'
+});
+Object.assign(translations.hi, {
+    home_title: 'पशु चारा और साइलेज गुणवत्ता सहायता',
+    home_description: 'चारा रिपोर्ट के मान दर्ज करें और अनुमान व व्यावहारिक सुझाव देखें।',
+    manual_input_title: 'मैन्युअल इनपुट',
+    manual_input_desc: 'मौजूदा चारा रिपोर्ट के मान इस्तेमाल करें',
+    demo_values_title: 'डेमो मान',
+    demo_values_desc: 'वैकल्पिक और स्पष्ट रूप से सिम्युलेटेड',
+    saved_reports_title: 'सहेजी गई रिपोर्ट',
+    saved_reports_desc: 'प्रोजेक्ट के स्थानीय डेटाबेस में सहेजी गई',
+    explore_title: 'DiaryLens देखें',
+    explore_test_desc: 'मान खुद दर्ज करें या सिम्युलेटेड डेमो मान भरें।'
+});
+Object.assign(translations.ta, {
+    home_title: 'கால்நடைத் தீவனம் மற்றும் சைலேஜ் தர ஆதரவு',
+    home_description: 'தீவன அறிக்கை மதிப்புகளை உள்ளிட்டு, மதிப்பீடும் நடைமுறை ஆலோசனைகளும் பெறுங்கள்.',
+    manual_input_title: 'கைமுறை உள்ளீடு',
+    manual_input_desc: 'ஏற்கனவே உள்ள தீவன அறிக்கை மதிப்புகளைப் பயன்படுத்துங்கள்',
+    demo_values_title: 'டெமோ மதிப்புகள்',
+    demo_values_desc: 'விருப்பமானவை; உருவகப்படுத்தப்பட்டவை என்று குறிக்கப்பட்டுள்ளன',
+    saved_reports_title: 'சேமித்த அறிக்கைகள்',
+    saved_reports_desc: 'திட்டத்தின் உள்ளூர் தரவுத்தளத்தில் சேமிக்கப்படும்',
+    explore_title: 'DiaryLens-ஐப் பாருங்கள்',
+    explore_test_desc: 'மதிப்புகளை நீங்களே உள்ளிடுங்கள் அல்லது உருவகப்படுத்தப்பட்ட டெமோ மதிப்புகளை நிரப்புங்கள்.'
+});
+Object.assign(translations.te, {
+    home_title: 'పశువుల మేత మరియు సైలేజ్ నాణ్యత సహాయం',
+    home_description: 'మేత నివేదిక విలువలను నమోదు చేసి అంచనా, ఉపయోగకరమైన సూచనలు చూడండి.',
+    manual_input_title: 'మాన్యువల్ నమోదు',
+    manual_input_desc: 'ఇప్పటికే ఉన్న మేత నివేదిక విలువలను ఉపయోగించండి',
+    demo_values_title: 'డెమో విలువలు',
+    demo_values_desc: 'ఐచ్ఛికం; అనుకరణ డేటాగా గుర్తించబడతాయి',
+    saved_reports_title: 'సేవ్ చేసిన నివేదికలు',
+    saved_reports_desc: 'ప్రాజెక్ట్ స్థానిక డేటాబేస్‌లో భద్రపరచబడతాయి',
+    explore_title: 'DiaryLens‌ను చూడండి',
+    explore_test_desc: 'విలువలను నమోదు చేయండి లేదా అనుకరణ డెమో విలువలను నింపండి.'
+});
+Object.assign(translations.mr, {
+    home_title: 'पशुखाद्य आणि सायलेज गुणवत्ता सहाय्य',
+    home_description: 'चारा अहवालातील मूल्ये भरा आणि अंदाज व उपयोगी सूचना पाहा.',
+    manual_input_title: 'मॅन्युअल नोंद',
+    manual_input_desc: 'उपलब्ध चारा अहवालातील मूल्ये वापरा',
+    demo_values_title: 'डेमो मूल्ये',
+    demo_values_desc: 'पर्यायी; सिम्युलेटेड म्हणून स्पष्टपणे दर्शवलेली',
+    saved_reports_title: 'जतन केलेले अहवाल',
+    saved_reports_desc: 'प्रकल्पाच्या स्थानिक डेटाबेसमध्ये जतन होतात',
+    explore_title: 'DiaryLens पाहा',
+    explore_test_desc: 'मूल्ये स्वतः भरा किंवा सिम्युलेटेड डेमो मूल्ये वापरा.'
+});
 
 // ============================================
 // LANGUAGE CONTROLLER
@@ -615,7 +677,14 @@ function updateLanguage(lang) {
         const key = element.getAttribute('data-i18n');
         const translation = t(key);
         if (element.tagName !== 'INPUT' && element.tagName !== 'TEXTAREA' && element.tagName !== 'SELECT') {
-            element.textContent = translation;
+            const textNode = Array.from(element.childNodes).find(node =>
+                node.nodeType === Node.TEXT_NODE && node.textContent.trim()
+            );
+            if (textNode) {
+                textNode.textContent = ` ${translation}`;
+            } else {
+                element.textContent = translation;
+            }
         }
     });
 
@@ -650,14 +719,14 @@ function updateLanguage(lang) {
     });
     
     // Update document title
-    document.title = `${t('app_title')} | SmartFeed`;
+    document.title = `${t('app_title')} | DiaryLens`;
 }
 
 // Initialize language on page load
 document.addEventListener('DOMContentLoaded', function() {
     const langSelect = document.getElementById('languageSelect');
     if (langSelect) {
-        langSelect.value = currentLanguage;
+        langSelect.value = translations[currentLanguage] ? currentLanguage : 'en';
         langSelect.addEventListener('change', function() {
             updateLanguage(this.value);
             showToast(`Language changed to ${this.options[this.selectedIndex].text}`);
