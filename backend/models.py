@@ -1,9 +1,13 @@
 # backend/models.py
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 
 db = SQLAlchemy()
+
+
+def utc_now_naive():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -15,7 +19,7 @@ class User(db.Model):
     full_name = db.Column(db.String(100))
     phone = db.Column(db.String(20))
     role = db.Column(db.String(20), default='farmer')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now_naive)
     tests = db.relationship('FeedTest', backref='user', lazy=True)
     
     def to_dict(self):
@@ -47,7 +51,7 @@ class FeedTest(db.Model):
     contamination = db.Column(db.String(50))
     advisory = db.Column(db.Text)
     recommendations = db.Column(db.Text)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=utc_now_naive)
     
     def to_dict(self):
         return {
@@ -77,3 +81,28 @@ class FeedTest(db.Model):
             return decoded if isinstance(decoded, list) else []
         except (TypeError, json.JSONDecodeError):
             return []
+
+
+class FarmRecord(db.Model):
+    __tablename__ = 'farm_records'
+
+    id = db.Column(db.Integer, primary_key=True)
+    record_id = db.Column(db.String(36), unique=True, nullable=False)
+    sample_id = db.Column(db.String(50), unique=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    record_type = db.Column(db.String(32), nullable=False, index=True)
+    payload = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=utc_now_naive, nullable=False)
+
+    def to_dict(self):
+        try:
+            payload = json.loads(self.payload)
+        except (TypeError, json.JSONDecodeError):
+            payload = {}
+        return {
+            'record_id': self.record_id,
+            'sample_id': self.sample_id,
+            'record_type': self.record_type,
+            'payload': payload,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }

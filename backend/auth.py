@@ -2,6 +2,7 @@
 from flask import request, jsonify
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 from flask_bcrypt import Bcrypt
+from sqlalchemy import func, or_
 from models import db, User
 from datetime import datetime
 
@@ -43,10 +44,14 @@ def login_user():
     if not isinstance(data, dict):
         return jsonify({'error': 'Request body must be a JSON object.'}), 400
     
-    if not data.get('username') or not data.get('password'):
-        return jsonify({'error': 'Username and password required'}), 400
+    identifier = str(data.get('username') or '').strip()
+    if not identifier or not data.get('password'):
+        return jsonify({'error': 'Username/email and password required'}), 400
     
-    user = User.query.filter_by(username=data['username']).first()
+    user = User.query.filter(or_(
+        User.username == identifier,
+        func.lower(User.email) == identifier.lower()
+    )).first()
     
     if not user or not bcrypt.check_password_hash(user.password_hash, data['password']):
         return jsonify({'error': 'Invalid credentials'}), 401

@@ -19,6 +19,7 @@
                 <li><a href="./index.html" data-i18n="nav_home"><i class="fas fa-home"></i> Home</a></li>
                 <li><a href="./test.html" data-i18n="nav_test"><i class="fas fa-flask"></i> Test</a></li>
                 <li><a href="./dashboard.html" data-i18n="nav_dashboard"><i class="fas fa-chart-pie"></i> Dashboard</a></li>
+                <li><a href="./farm-tools.html" data-i18n="nav_tools"><i class="fas fa-toolbox"></i> Farm tools</a></li>
                 <li><a href="./reports.html" class="active" data-i18n="nav_advisory"><i class="fas fa-list-check"></i> Advisory</a></li>
                 <li><a href="./about.html" data-i18n="nav_about"><i class="fas fa-info-circle"></i> About</a></li>
             </ul>
@@ -83,7 +84,7 @@
     <div id="loginModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
         <div style="background: white; padding: 30px; border-radius: 16px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
             <h3 style="margin-bottom: 20px; color: var(--primary-dark);"><i class="fas fa-sign-in-alt" style="color: var(--primary);"></i> Login</h3>
-            <input type="text" id="loginUsername" aria-label="Username" placeholder="Username" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+            <input type="text" id="loginUsername" aria-label="Username or email" data-i18n-placeholder="login_identifier" placeholder="Username or email" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
             <input type="password" id="loginPassword" aria-label="Password" placeholder="Password" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
             <button onclick="handleLogin()" class="btn-primary" style="width: 100%; justify-content: center;">Login</button>
             <button onclick="closeLoginModal()" style="width: 100%; margin-top: 10px; padding: 12px; border: none; background: #f5f5f5; border-radius: 8px; cursor: pointer; font-weight: 600;">Cancel</button>

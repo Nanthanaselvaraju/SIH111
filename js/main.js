@@ -14,6 +14,7 @@ const BACKEND_BASE_URL = window.location.port && window.location.port !== '5000'
 const API_URL = BACKEND_BASE_URL ? `${BACKEND_BASE_URL}/api` : '/api';
 const HEALTH_URL = BACKEND_BASE_URL ? `${BACKEND_BASE_URL}/health` : '/health';
 let authToken = localStorage.getItem('authToken') || null;
+let milkYieldChart = null;
 
 // Helper to safely get elements on multi-page layout
 function getEl(id) { return document.getElementById(id); }
@@ -87,6 +88,7 @@ async function loginUser(username, password) {
             updateUIForLoggedInUser(data.user);
             await loadUserTests();
             await loadSavedReports();
+            await loadFarmDashboardSummary();
             return data;
         } else {
             alert('❌ ' + data.error);
@@ -151,6 +153,70 @@ async function getDashboardStats(query = '') {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Could not load dashboard statistics.');
     return data;
+}
+
+async function loadFarmDashboardSummary() {
+    const silageMessage = getEl('dashboardSilageMessage');
+    const chart = getEl('milkYieldChart');
+    const empty = getEl('milkYieldEmpty');
+    if (!silageMessage && !chart) return;
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+        if (silageMessage) silageMessage.textContent = window.t ? window.t('dashboard_silage_signin') : 'Sign in to view saved silage observations.';
+        if (chart) chart.hidden = true;
+        if (empty) { empty.hidden = false; empty.textContent = window.t ? window.t('dashboard_yield_empty') : 'Sign in and save at least two dated milk entries to see a trend.'; }
+        return;
+    }
+    try {
+        const response = await fetch(`${API_URL}/farm-records`, { headers: { Authorization: `Bearer ${token}` } });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not load farm records.');
+        const records = data.records || [];
+        const latestSilage = records.find((record) => record.record_type === 'silage_observation');
+        if (silageMessage) {
+            if (!latestSilage) {
+                silageMessage.textContent = window.t ? window.t('dashboard_silage_none') : 'No saved silage observation yet.';
+            } else {
+                const warningKeys = ['mould', 'unusual_smell', 'colour_change', 'texture_change', 'air_exposure', 'water_entry'];
+                const warningCount = warningKeys.filter((key) => latestSilage.payload[key]).length;
+                silageMessage.textContent = window.t
+                    ? window.t('dashboard_silage_status').replace('{sample}', latestSilage.payload.sample_id || 'Silage sample').replace('{date}', latestSilage.payload.date || 'Date not entered').replace('{count}', warningCount)
+                    : `${latestSilage.payload.sample_id || 'Silage sample'} · ${latestSilage.payload.date || 'Date not entered'} · ${warningCount} warning sign(s) recorded. This is an observation, not a safety result.`;
+            }
+        }
+        const latestMilk = records.find((record) => record.record_type === 'milk_yield');
+        const groupId = latestMilk?.payload?.animal_id || '';
+        const milkEntries = records.filter((record) => record.record_type === 'milk_yield' &&
+            String(record.payload.animal_id || '') === String(groupId) && record.payload.date && Number.isFinite(Number(record.payload.litres)))
+            .sort((left, right) => left.payload.date.localeCompare(right.payload.date) || left.created_at.localeCompare(right.created_at));
+        const entriesByDate = new Map();
+        milkEntries.forEach((record) => entriesByDate.set(record.payload.date, record));
+        const plotted = [...entriesByDate.values()].slice(-14);
+        if (!chart || !empty || plotted.length < 2 || typeof window.Chart !== 'function') {
+            if (chart) chart.hidden = true;
+            if (empty) {
+                empty.hidden = false;
+                const messageKey = plotted.length < 2 ? 'dashboard_yield_need_two' : 'dashboard_chart_unavailable';
+                empty.textContent = window.t ? window.t(messageKey) : 'Save at least two dated entries for this animal/group to see a trend.';
+            }
+            return;
+        }
+        chart.hidden = false;
+        empty.hidden = true;
+        if (milkYieldChart) milkYieldChart.destroy();
+        milkYieldChart = new window.Chart(chart, {
+            type: 'line',
+            data: {
+                labels: plotted.map((record) => new Date(`${record.payload.date}T00:00:00`).toLocaleDateString()),
+                datasets: [{ label: window.t ? window.t('dashboard_yield_series') : 'Recorded milk (L)', data: plotted.map((record) => Number(record.payload.litres)), borderColor: '#286044', backgroundColor: 'rgba(40, 96, 68, .10)', tension: 0.2, fill: true }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, title: { display: true, text: window.t ? window.t('dashboard_yield_unit') : 'Litres' } } }, plugins: { tooltip: { callbacks: { afterBody: () => window.t ? window.t('dashboard_yield_caution') : 'Timeline only; this does not establish cause.' } } } }
+        });
+    } catch (error) {
+        if (silageMessage) silageMessage.textContent = error.message || 'Could not load saved silage observations.';
+        if (chart) chart.hidden = true;
+        if (empty) { empty.hidden = false; empty.textContent = window.t ? window.t('dashboard_yield_error') : 'Could not load saved milk-yield entries.'; }
+    }
 }
 
 async function loadUserTests(query = dashboardFilterQuery()) {
@@ -296,10 +362,37 @@ async function loadSavedReport(reportId) {
             <p><strong>Advisory:</strong> ${escapeHTML(test.advisory || 'No advisory saved.')}</p>
             <p><strong>Recommendations:</strong> ${test.recommendations?.length ? test.recommendations.map(escapeHTML).join('<br>') : 'None saved.'}</p>
             <button class="btn-secondary" type="button" id="printSavedReport">Print report</button>
+            <button class="btn-secondary" type="button" id="savedReportQr">Create private QR</button>
+            <div id="savedReportQrView" class="saved-report-qr" hidden></div>
         `;
         getEl('printSavedReport')?.addEventListener('click', () => {
             document.body.classList.add('print-saved-report');
             window.print();
+        });
+        const qrButton = getEl('savedReportQr');
+        qrButton?.addEventListener('click', async () => {
+            const token = localStorage.getItem('authToken');
+            try {
+                const response = await fetch(`${API_URL}/tests/${encodeURIComponent(test.id)}/qr`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Could not create a private QR for this report.');
+                const imageUrl = URL.createObjectURL(await response.blob());
+                const view = getEl('savedReportQrView');
+                const image = document.createElement('img');
+                image.src = imageUrl;
+                image.alt = `Private QR for sample ${test.sample_id}`;
+                image.width = 160;
+                image.height = 160;
+                const link = document.createElement('a');
+                link.href = imageUrl;
+                link.download = `${test.sample_id}-qr.png`;
+                link.textContent = 'Download private QR';
+                view.replaceChildren(image, link);
+                view.hidden = false;
+            } catch (error) {
+                qrButton.textContent = error.message;
+            }
         });
         window.addEventListener('afterprint', () => document.body.classList.remove('print-saved-report'), { once: true });
     } catch (error) {
@@ -554,6 +647,7 @@ async function fillWithSimulatedValues() {
     if (fiberEl) fiberEl.value = data.fiber;
     if (phEl) phEl.value = data.ph;
     if (energyEl) energyEl.value = data.energy;
+    if (getEl('measurementSource')) getEl('measurementSource').value = 'simulated_demo';
 
     updateSensorStatus(data);
     
@@ -691,10 +785,24 @@ function downloadQR() {
 
 function createQRAnalysis(rawValue) {
     let payload;
+    const qrText = String(rawValue || '').trim();
     try {
-        payload = JSON.parse(String(rawValue || '').trim());
+        payload = JSON.parse(qrText);
     } catch {
-        return { hasMeasurements: false, error: 'QR content is not a JSON measurement record.' };
+        try {
+            const url = new URL(qrText, window.location.href);
+            const reportId = url.searchParams.get('test_id');
+            const farmRecordId = url.searchParams.get('record_id');
+            if (url.origin === window.location.origin && /\/reports(?:\.html)?$/.test(url.pathname) && /^\d+$/.test(reportId || '')) {
+                return { hasMeasurements: false, savedReportId: reportId, error: '' };
+            }
+            if (url.origin === window.location.origin && /\/farm-tools(?:\.html)?$/.test(url.pathname) && /^[0-9a-f-]{36}$/i.test(farmRecordId || '')) {
+                return { hasMeasurements: false, savedFarmRecordId: farmRecordId, error: '' };
+            }
+        } catch {
+            return { hasMeasurements: false, error: 'QR content is not a supported report link or JSON measurement record.' };
+        }
+        return { hasMeasurements: false, error: 'QR content is not a supported report link or JSON measurement record.' };
     }
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
         return { hasMeasurements: false, error: 'QR content must be a JSON measurement record.' };
@@ -722,6 +830,11 @@ function createQRAnalysis(rawValue) {
         formData: {
             ...measurements,
             sampleId: payload.sample_id || payload.sampleId || 'QR-' + Date.now().toString().slice(-6),
+            sampleName: String(payload.sample_name || payload.sampleName || ''),
+            sampleDate: String(payload.sample_date || payload.sampleDate || ''),
+            measurementSource: ['laboratory_report', 'manufacturer_label', 'farmer_measured', 'reference_value', 'simulated_demo', 'not_specified'].includes(payload.measurement_source)
+                ? payload.measurement_source
+                : 'not_specified',
             feedType: String(payload.feed_type || payload.feedType || 'cattle').toLowerCase()
         }
     };
@@ -762,6 +875,9 @@ function displayResults(formData, prediction, metadata = {}) {
     const analysis = prediction.analysis || {};
     const values = [
         ['Sample ID', metadata.test?.sample_id || (formData.sampleId === 'AUTO' ? 'Not saved' : formData.sampleId)],
+        ['Sample name', formData.sampleName || 'Not provided'],
+        ['Collection date', formData.sampleDate || 'Not provided'],
+        ['Value source', window.t ? window.t(({ laboratory_report: 'source_lab', manufacturer_label: 'source_manufacturer', farmer_measured: 'source_measured', reference_value: 'source_reference', simulated_demo: 'source_simulated' })[formData.measurementSource] || 'source_not_specified') : formData.measurementSource],
         ['Date', metadata.test?.timestamp ? new Date(metadata.test.timestamp).toLocaleString() : new Date().toLocaleString()],
         ['Type', formData.feedType],
         ['Moisture', `${formData.moisture}%`],
@@ -785,8 +901,101 @@ function displayResults(formData, prediction, metadata = {}) {
         <p class="model-limitations"><strong>Analysis source:</strong> ${escapeHTML(source)}<br>${escapeHTML(limitation)}</p>
         ${metadata.test ? '' : '<p class="model-limitations">Not saved to test history. Sign in before analysis to save this result to your account.</p>'}
     `;
+    const qrButton = getEl('createTestQr');
+    const qrView = getEl('testQrView');
+    if (qrButton && qrView) {
+        qrButton.hidden = false;
+        qrView.hidden = true;
+        qrView.replaceChildren();
+        qrButton.onclick = async () => {
+            const token = localStorage.getItem('authToken');
+            qrButton.disabled = true;
+            try {
+                const isSaved = !!(token && metadata.test?.id);
+                const response = isSaved
+                    ? await fetch(`${API_URL}/tests/${encodeURIComponent(metadata.test.id)}/qr`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    })
+                    : await fetch(`${API_URL}/qr/measurements`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sample_id: formData.sampleId,
+                            sample_name: formData.sampleName,
+                            sample_date: formData.sampleDate,
+                            measurement_source: formData.measurementSource,
+                            feed_type: formData.feedType,
+                            moisture: formData.moisture,
+                            protein: formData.protein,
+                            fiber: formData.fiber,
+                            energy: formData.energy,
+                            ph: formData.ph
+                        })
+                    });
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    throw new Error(data.error || 'Could not create the QR code.');
+                }
+                const imageUrl = URL.createObjectURL(await response.blob());
+                const image = document.createElement('img');
+                image.src = imageUrl;
+                image.alt = `QR code for sample ${metadata.test?.sample_id || formData.sampleId}`;
+                image.width = 180;
+                image.height = 180;
+                const download = document.createElement('a');
+                download.href = imageUrl;
+                download.download = `${metadata.test?.sample_id || formData.sampleId || 'feed-measurements'}-qr.png`;
+                download.textContent = window.t ? window.t('qr_download') : 'Download private QR';
+                const note = document.createElement('p');
+                const noteKey = isSaved ? 'qr_private_note' : 'qr_measurement_note';
+                note.textContent = window.t ? window.t(noteKey) : isSaved
+                    ? 'This QR opens the saved report and requires the same account to sign in.'
+                    : 'This QR contains the values you entered; scanning it can prefill the analysis form. It is not a certified result.';
+                qrView.replaceChildren(image, download, note);
+                qrView.hidden = false;
+            } catch (error) {
+                qrView.textContent = error.message || 'Could not create the QR code.';
+                qrView.hidden = false;
+            } finally {
+                qrButton.disabled = false;
+            }
+        };
+    }
     advisoryP.textContent = analysis.advisory || 'The model did not return an advisory for this result.';
     if (timestampSpan) timestampSpan.textContent = metadata.test?.timestamp ? new Date(metadata.test.timestamp).toLocaleString() : new Date().toLocaleString();
+    resultsDiv.style.display = 'block';
+}
+
+function displayImageObservationResults(fileName, observations) {
+    const resultsDiv = getEl('testResults');
+    const content = getEl('resultsContent');
+    const advisory = getEl('advisoryText');
+    if (!resultsDiv || !content || !advisory) return;
+
+    const title = document.createElement('h4');
+    title.textContent = window.t ? window.t('image_result_title') : 'Photo observation screen (not AI)';
+    const file = document.createElement('p');
+    file.textContent = `${window.t ? window.t('image_result_photo') : 'Photo'}: ${fileName}`;
+    const findings = document.createElement('p');
+    findings.textContent = observations.length
+        ? `${window.t ? window.t('image_result_findings') : 'Signs you selected'}: ${observations.map((key) => window.t ? window.t(key) : key).join(', ')}`
+        : (window.t ? window.t('image_result_none') : 'No warning signs selected. This does not establish safety.');
+    const limit = document.createElement('p');
+    limit.className = 'model-limitations';
+    limit.textContent = window.t ? window.t('image_result_caution') : 'The image was not automatically analyzed. These are farmer-selected observations, not a diagnosis or toxin test.';
+    const link = document.createElement('a');
+    link.className = 'text-link';
+    link.href = './farm-tools.html#sampleScreening';
+    link.textContent = window.t ? window.t('image_silage_link') : 'Record silage observations';
+    content.replaceChildren(title, file, findings, limit, link);
+    advisory.textContent = observations.length
+        ? (window.t ? window.t('image_result_warning') : 'Warning signs were selected. Keep seriously affected feed separate and seek expert or laboratory review.')
+        : (window.t ? window.t('image_result_no_warning') : 'No listed warning sign was selected. Appearance alone cannot confirm feed safety.');
+    const qrButton = getEl('createTestQr');
+    const qrView = getEl('testQrView');
+    if (qrButton) qrButton.hidden = true;
+    if (qrView) { qrView.hidden = true; qrView.replaceChildren(); }
+    if (getEl('resultTimestamp')) getEl('resultTimestamp').textContent = new Date().toLocaleString();
     resultsDiv.style.display = 'block';
 }
 
@@ -825,6 +1034,9 @@ if (_testForm) {
 
         const formData = {
             sampleId: getEl('sampleId').value.trim() || 'AUTO',
+            sampleName: getEl('sampleName')?.value.trim() || '',
+            sampleDate: getEl('sampleDate')?.value || '',
+            measurementSource: getEl('measurementSource')?.value || 'not_specified',
             feedType: getEl('feedType').value,
             moisture: Number(getEl('moisture').value),
             protein: Number(getEl('protein').value),
@@ -845,6 +1057,9 @@ if (_testForm) {
             if (token) {
                 responseData = await sendTestToBackend({
                     sample_id: formData.sampleId,
+                    sample_name: formData.sampleName,
+                    sample_date: formData.sampleDate,
+                    measurement_source: formData.measurementSource,
                     feed_type: formData.feedType,
                     moisture: formData.moisture,
                     protein: formData.protein,
@@ -867,6 +1082,7 @@ if (_testForm) {
             }
             displayResults(formData, responseData.prediction, {
                 test: responseData.test,
+                sampleMetadata: responseData.sample_metadata,
                 source: responseData.model_source || responseData.prediction?.model_source,
                 limitations: responseData.limitations
             });
@@ -1002,6 +1218,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 2000);
     
     checkAuthStatus();
+    loadFarmDashboardSummary();
 
     const applyDashboardFilters = getEl('applyDashboardFilters');
     if (applyDashboardFilters) applyDashboardFilters.addEventListener('click', () => loadUserTests(dashboardFilterQuery()));
@@ -1440,6 +1657,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     fileName.textContent = file.name;
                     preview.style.display = 'block';
                 }
+                const observationFields = getEl('imageObservationFields');
+                if (observationFields) observationFields.hidden = false;
                 showToast('✅ Image selected: ' + file.name);
             }
         });
@@ -1456,6 +1675,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (preview) preview.style.display = 'none';
             if (previewImage) previewImage.removeAttribute('src');
             if (fileName) fileName.textContent = '';
+            const observationFields = getEl('imageObservationFields');
+            if (observationFields) {
+                observationFields.hidden = true;
+                observationFields.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => { checkbox.checked = false; });
+            }
             showToast('Image removed.');
         });
     }
@@ -1478,13 +1702,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             };
 
-            if (selected.includes('image')) {
+            if (selected.includes('image') && !selected.includes('details') && !selected.includes('qr')) {
                 const imageFile = imageUpload?.files?.[0];
                 if (!imageFile) {
-                    showInputMessage('Choose an image first. The image is previewed only; this project does not include an image classification model. Use Details to analyze measured values.');
+                    showInputMessage(window.t ? window.t('image_no_file') : 'Choose a photo to preview. Photos are not analyzed here; enter report values under Details or record silage observations in Farm Tools.');
                     return;
                 }
-                showInputMessage('Image preview is available, but image-based quality analysis is not implemented. Select Details and enter measured values to run the existing Python model.');
+                const observations = [
+                    ['imageMould', 'image_observe_mould'], ['imageColour', 'image_observe_colour'],
+                    ['imageForeign', 'image_observe_foreign'], ['imageWetHeat', 'image_observe_wet_heat']
+                ].filter(([id]) => getEl(id)?.checked).map(([, key]) => key);
+                if (!observations.length) {
+                    showInputMessage(window.t ? window.t('image_observation_prompt') : 'Photo preview is ready. Select any visible warning signs you observe, then Analyze. The photo is not automatically classified.');
+                    getEl('imageObservationFields')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return;
+                }
+                displayImageObservationResults(imageFile.name, observations);
+                getEl('testResults')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 return;
             }
 
@@ -1494,6 +1728,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 const qrAnalysis = createQRAnalysis(scannedQRValue);
+                if (qrAnalysis.savedReportId) {
+                    const reportUrl = new URL('./reports.html', window.location.href);
+                    reportUrl.searchParams.set('test_id', qrAnalysis.savedReportId);
+                    window.location.assign(reportUrl.href);
+                    return;
+                }
+                if (qrAnalysis.savedFarmRecordId) {
+                    const recordUrl = new URL('./farm-tools.html', window.location.href);
+                    recordUrl.searchParams.set('record_id', qrAnalysis.savedFarmRecordId);
+                    window.location.assign(recordUrl.href);
+                    return;
+                }
                 if (!qrAnalysis.hasMeasurements) {
                     showInputMessage(`${qrAnalysis.error} Expected moisture, protein, fiber, energy, and pH fields. No values were inferred.`);
                     return;
@@ -1505,6 +1751,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 getEl('sampleId').value = formData.sampleId;
+                if (getEl('sampleName')) getEl('sampleName').value = formData.sampleName;
+                if (getEl('sampleDate')) getEl('sampleDate').value = /^\d{4}-\d{2}-\d{2}$/.test(formData.sampleDate) ? formData.sampleDate : '';
+                if (getEl('measurementSource')) getEl('measurementSource').value = formData.measurementSource;
                 feedType.value = formData.feedType;
                 for (const field of ['moisture', 'protein', 'fiber', 'energy', 'ph']) {
                     getEl(field).value = formData[field];

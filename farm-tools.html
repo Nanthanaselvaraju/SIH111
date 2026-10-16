@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#194631" />
+    <title>Farm Tools - DiaryLens</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <a class="nav-logo" href="./index.html"><i class="fas fa-cow"></i><span>DiaryLens</span></a>
+            <ul class="nav-menu">
+                <li><a href="./index.html" data-i18n="nav_home"><i class="fas fa-house"></i> Home</a></li>
+                <li><a href="./test.html" data-i18n="nav_test"><i class="fas fa-flask"></i> Test</a></li>
+                <li><a href="./dashboard.html" data-i18n="nav_dashboard"><i class="fas fa-chart-pie"></i> Dashboard</a></li>
+                <li><a href="./farm-tools.html" class="active" data-i18n="nav_tools"><i class="fas fa-toolbox"></i> Farm tools</a></li>
+                <li><a href="./reports.html" data-i18n="nav_advisory"><i class="fas fa-list-check"></i> Advisory</a></li>
+                <li><a href="./about.html" data-i18n="nav_about"><i class="fas fa-circle-info"></i> About</a></li>
+            </ul>
+            <div class="nav-right">
+                <div class="auth-buttons" id="authButtons">
+                    <button onclick="showLoginModal()" class="btn-secondary"><i class="fas fa-right-to-bracket"></i> <span data-i18n="login">Login</span></button>
+                    <button onclick="showRegisterModal()" class="btn-primary"><i class="fas fa-user-plus"></i> <span data-i18n="register">Register</span></button>
+                </div>
+                <div class="auth-buttons" id="authUserInfo" style="display:none">
+                    <span id="userNameDisplay"><i class="fas fa-user-circle"></i> <span id="userNameText"></span></span>
+                    <button onclick="logoutUser()" class="btn-secondary"><i class="fas fa-right-from-bracket"></i> <span data-i18n="logout">Logout</span></button>
+                </div>
+                <div class="language-selector">
+                    <select id="languageSelect" aria-label="Language">
+                        <option value="en">English</option><option value="hi">हिंदी</option><option value="ta">தமிழ்</option><option value="te">తెలుగు</option><option value="mr">मराठी</option>
+                    </select>
+                </div>
+                <button class="nav-toggle" id="navToggle" type="button" aria-label="Open navigation menu" aria-expanded="false"><i class="fas fa-bars"></i></button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="farm-tools-page">
+        <header class="tools-heading">
+            <div>
+                <p class="eyebrow">DIARYLENS · FARM RECORDS</p>
+                <h1 data-i18n="tools_title">Farm tools and observations</h1>
+                <p data-i18n="tools_intro">Record what you observe, review entered data, and keep screening separate from laboratory confirmation.</p>
+            </div>
+            <a class="btn-primary" href="./test.html"><i class="fas fa-flask"></i> <span data-i18n="tools_feed_cta">Test feed sample</span></a>
+        </header>
+
+        <nav class="tools-index" aria-label="Farm tools">
+            <a href="#sampleScreening" data-i18n="tools_sample_screening">Sample screening</a>
+            <a href="#milkTracker" data-i18n="tools_milk">Milk and costs</a>
+            <a href="#farmerAssistant" data-i18n="tools_assistant">Voice assistant</a>
+            <a href="#farmHistory" data-i18n="tools_history">Farm history</a>
+        </nav>
+
+        <p class="tools-integrity-note"><i class="fas fa-circle-info"></i> <span data-i18n="tools_integrity">Observations and entered values are not sensor measurements. Photos are preview-only. No toxin, chemical, disease, or feed-safety certification is provided.</span></p>
+
+        <section class="farm-tool-section" id="sampleScreening">
+            <div class="tool-section-heading"><div><p class="eyebrow">01 · SAMPLE SCREENING</p><h2 data-i18n="tools_sample_screening_title">Silage and contamination checks</h2><p data-i18n="tools_sample_screening_desc">Record silage observations or a sample concern. Neither is a laboratory confirmation.</p></div></div>
+            <div class="screening-subfeature" id="silageScreening">
+            <div class="tool-section-heading"><div><p class="eyebrow">SILAGE</p><h3 data-i18n="tools_silage_title">Silage condition check</h3><p data-i18n="tools_silage_desc">Record storage conditions and visible or sensory warning signs. This is not an image classifier.</p></div><span class="tool-source-tag" data-i18n="tools_observation_tag">Farmer observations</span></div>
+            <form id="silageForm" class="tool-panel">
+                <div class="tool-form-grid">
+                    <label><span data-i18n="tools_sample_id">Sample ID</span><input name="sample_id" maxlength="50" placeholder="SIL-YYYYMMDD-01"></label>
+                    <label><span data-i18n="tools_date">Collection date</span><input name="date" type="date" required></label>
+                    <label><span data-i18n="tools_silage_type">Silage type</span><select name="silage_type"><option value="maize">Maize</option><option value="grass">Grass</option><option value="sorghum">Sorghum</option><option value="other">Other / not sure</option></select></label>
+                    <label><span data-i18n="tools_storage">Storage method</span><select name="storage_method"><option value="pit">Pit / bunker</option><option value="bag">Bag</option><option value="wrapped_bale">Wrapped bale</option><option value="other">Other / not sure</option></select></label>
+                    <label><span data-i18n="tools_storage_days">Storage duration (days)</span><input name="storage_days" type="number" min="0" max="10000" step="1"></label>
+                    <label><span data-i18n="tools_ph">Measured pH (optional)</span><input name="ph" type="number" min="0" max="14" step="0.01" inputmode="decimal"></label>
+                    <label><span data-i18n="tools_moisture">Measured moisture % (optional)</span><input name="moisture_pct" type="number" min="0" max="100" step="0.1" inputmode="decimal"></label>
+                    <label><span data-i18n="tools_temperature">Measured temperature °C (optional)</span><input name="temperature_c" type="number" min="-40" max="100" step="0.1" inputmode="decimal"></label>
+                    <label><span data-i18n="tools_photo">Photo (preview only)</span><input id="silagePhoto" type="file" accept="image/*" capture="environment"></label>
+                </div>
+                <fieldset class="observation-checks">
+                    <legend data-i18n="tools_observe">What did you observe?</legend>
+                    <label><input name="mould" type="checkbox"> <span data-i18n="tools_mould">Mould-like patches</span></label>
+                    <label><input name="unusual_smell" type="checkbox"> <span data-i18n="tools_smell">Unusual or putrid smell</span></label>
+                    <label><input name="colour_change" type="checkbox"> <span data-i18n="tools_colour">Unusual colour change</span></label>
+                    <label><input name="texture_change" type="checkbox"> <span data-i18n="tools_texture">Unusual texture or heating</span></label>
+                    <label><input name="air_exposure" type="checkbox"> <span data-i18n="tools_air">Air exposure / loose cover</span></label>
+                    <label><input name="water_entry" type="checkbox"> <span data-i18n="tools_water">Water entry or damaged cover</span></label>
+                </fieldset>
+                <img id="silagePhotoPreview" class="photo-preview" alt="Selected silage photo preview" hidden>
+                <div class="tool-form-actions"><button class="btn-primary" type="submit"><i class="fas fa-clipboard-check"></i> <span data-i18n="tools_assess_save">Review and save observation</span></button><p class="save-state" id="silageSaveState" role="status" aria-live="polite"></p></div>
+                <div id="silageAssessment" class="assessment-result" aria-live="polite" hidden></div>
+            </form>
+            <aside class="tool-guidance"><strong data-i18n="tools_next_steps">Storage follow-up</strong><span data-i18n="tools_silage_guidance">Limit air and water entry, inspect the exposed face, and keep a dated note. If spoilage is extensive or animals are ill, isolate the affected feed and contact a veterinarian or laboratory.</span></aside>
+            </div>
+
+            <div class="screening-subfeature" id="contaminationReview">
+            <div class="tool-section-heading"><div><p class="eyebrow">SAMPLE CONCERNS</p><h3 data-i18n="tools_contamination_title">Contamination risk notes</h3><p data-i18n="tools_contamination_desc">Record a concern and evidence without treating it as chemical confirmation.</p></div></div>
+            <form id="contaminationForm" class="tool-panel">
+                <div class="tool-form-grid">
+                    <label><span data-i18n="tools_sample_id">Sample ID</span><input name="sample_id" maxlength="50" required></label>
+                    <label><span data-i18n="tools_concern">Concern</span><select name="concern"><option value="foreign_material">Visible foreign material</option><option value="sand_silica">Possible sand / silica</option><option value="mould">Mould-like growth</option><option value="suspected_adulteration">Suspected adulteration</option><option value="suspected_toxin">Possible toxin concern</option></select></label>
+                    <label class="tool-span-two"><span data-i18n="tools_evidence">What was seen or reported?</span><textarea name="evidence" maxlength="700" rows="3" required></textarea></label>
+                </div>
+                <div class="tool-form-actions"><button class="btn-primary" type="submit"><i class="fas fa-shield-halved"></i> <span data-i18n="tools_record_concern">Record concern</span></button><p class="save-state" id="contaminationSaveState" role="status" aria-live="polite"></p></div>
+                <div id="contaminationAssessment" class="assessment-result" aria-live="polite" hidden></div>
+            </form>
+            </div>
+        </section>
+
+        <section class="farm-tool-section" id="milkTracker">
+            <div class="tool-section-heading"><div><p class="eyebrow">02 · FARM RECORDS</p><h2 data-i18n="tools_milk_title">Milk yield and production costs</h2><p data-i18n="tools_milk_desc">Track dated entries and compare against your recorded baseline. A timeline does not show that one event caused another.</p></div></div>
+            <div class="split-tool-panels">
+                <form id="milkForm" class="tool-panel">
+                    <h3 data-i18n="tools_milk_entry">Daily milk entry</h3>
+                    <div class="tool-form-grid">
+                        <label><span data-i18n="tools_date">Date</span><input name="date" type="date" required></label>
+                        <label><span data-i18n="tools_animal_group">Animal / group ID</span><input name="animal_id" maxlength="80"></label>
+                        <label><span data-i18n="tools_litres">Milk yield (litres)</span><input name="litres" type="number" min="0" max="500" step="0.1" required></label>
+                        <label class="tool-span-two"><span data-i18n="tools_event">Feed, health, or management note (optional)</span><textarea name="event_note" maxlength="500" rows="2"></textarea></label>
+                    </div>
+                    <button class="btn-primary" type="submit"><i class="fas fa-floppy-disk"></i> <span data-i18n="tools_save_yield">Save milk entry</span></button>
+                    <p id="milkSaveState" class="save-state" role="status" aria-live="polite"></p>
+                    <div id="milkTrend" class="calculator-result" aria-live="polite"></div>
+                </form>
+                <form id="costForm" class="tool-panel">
+                    <h3 data-i18n="tools_cost_entry">Milk production cost entry</h3>
+                    <div class="tool-form-grid">
+                        <label><span data-i18n="tools_date">Date</span><input name="date" type="date" required></label>
+                        <label><span data-i18n="tools_animal_group">Animal / group ID</span><input name="animal_id" maxlength="80"></label>
+                        <label><span data-i18n="tools_feed_cost">Feed and fodder expense (₹)</span><input name="feed_cost" type="number" min="0" step="0.01" required></label>
+                        <label><span data-i18n="tools_other_cost">Other recorded costs (₹)</span><input name="other_cost" type="number" min="0" step="0.01" required></label>
+                        <label><span data-i18n="tools_milk_litres">Milk produced (litres)</span><input name="milk_litres" type="number" min="0" step="0.1" required></label>
+                        <label><span data-i18n="tools_milk_price">Sale price per litre (₹)</span><input name="milk_price" type="number" min="0" step="0.01" required></label>
+                    </div>
+                    <button class="btn-primary" type="submit"><i class="fas fa-calculator"></i> <span data-i18n="tools_calculate_cost">Calculate and save</span></button>
+                    <p id="costSaveState" class="save-state" role="status" aria-live="polite"></p>
+                    <div id="costResult" class="calculator-result" aria-live="polite"></div>
+                </form>
+            </div>
+            <p class="form-hint" data-i18n="tools_cost_formula">Expenses = feed and fodder + other entered costs. Revenue = milk litres × price. Cost/litre = expenses ÷ litres (when litres &gt; 0). Profit/loss = revenue − expenses. Only entered items are included.</p>
+        </section>
+
+        <section class="farm-tool-section assistant-section" id="farmerAssistant">
+            <div class="tool-section-heading"><div><p class="eyebrow">03 · FARMER SUPPORT</p><h2 data-i18n="assistant_title">Farmer help assistant</h2><p data-i18n="assistant_disclaimer">Rule-based information helper; not a live AI service, vet, laboratory, or safety assessment.</p></div></div>
+            <div class="tool-panel assistant-panel">
+                <div class="assistant-quick-questions" aria-label="Suggested questions">
+                    <button type="button" data-assistant-question="feed" data-i18n="assistant_question_feed">What does my feed result mean?</button>
+                    <button type="button" data-assistant-question="silage" data-i18n="assistant_question_silage">What should I check in silage?</button>
+                    <button type="button" data-assistant-question="cost" data-i18n="assistant_question_cost">How is cost per litre calculated?</button>
+                </div>
+                <div id="assistantMessages" class="assistant-messages" aria-live="polite" aria-relevant="additions"></div>
+                <form id="assistantForm" class="assistant-input-row">
+                    <label class="sr-only" for="assistantInput" data-i18n="assistant_input_label">Ask a question</label>
+                    <input id="assistantInput" type="text" maxlength="500" data-i18n-placeholder="assistant_placeholder" placeholder="Ask about a report, silage, milk, or costs" required>
+                    <button class="btn-primary" type="submit" data-i18n="assistant_send">Send</button>
+                </form>
+                <div class="assistant-voice-controls">
+                    <button class="btn-secondary" id="assistantListen" type="button"><i class="fas fa-microphone"></i> <span data-i18n="assistant_listen">Speak a question</span></button>
+                    <button class="btn-secondary" id="assistantSpeakLast" type="button" disabled><i class="fas fa-volume-high"></i> <span data-i18n="assistant_read_answer">Read answer aloud</span></button>
+                    <button class="btn-secondary" id="assistantStop" type="button" disabled><i class="fas fa-stop"></i> <span data-i18n="assistant_stop">Stop speaking</span></button>
+                    <p id="assistantVoiceStatus" role="status" aria-live="polite" data-i18n="assistant_ready">Typed questions are always available.</p>
+                    <small data-i18n="assistant_speech_notice">Speech recognition may use an online browser service; offline recognition is not guaranteed.</small>
+                </div>
+            </div>
+        </section>
+
+        <section class="farm-tool-section" id="farmHistory">
+            <div class="tool-section-heading"><div><p class="eyebrow">04 · SAVED RECORDS</p><h2 data-i18n="tools_history_title">Recent farm history</h2><p data-i18n="tools_history_desc">Account records are stored in this project's local SQLite database. Unsigned records stay in this browser only.</p></div><button type="button" id="refreshFarmHistory" class="btn-secondary"><i class="fas fa-rotate"></i> <span data-i18n="tools_refresh">Refresh</span></button></div>
+            <div class="history-controls">
+                <label>Search sample / group <input id="historySearch" type="search"></label>
+                <label>Record type <select id="historyType"><option value="">All records</option><option value="feed_sample_metadata">Feed sample</option><option value="silage_observation">Silage</option><option value="contamination_review">Contamination</option><option value="milk_yield">Milk yield</option><option value="cost_entry">Costs</option></select></label>
+                <label>From <input id="historyFrom" type="date"></label>
+                <label>To <input id="historyTo" type="date"></label>
+                <label>Saved on <select id="historyStorage"><option value="">Any location</option><option value="account">Project account</option><option value="device">This device only</option></select></label>
+                <button type="button" id="applyHistoryFilters" class="btn-secondary">Filter records</button>
+            </div>
+            <p id="farmHistoryStatus" class="save-state" role="status" aria-live="polite"></p>
+            <article id="linkedRecordDetail" class="linked-record-detail" hidden></article>
+            <div id="farmHistoryList" class="farm-history-list"></div>
+            <button type="button" id="exportFarmHistory" class="btn-secondary"><i class="fas fa-download"></i> <span data-i18n="tools_export">Export visible records (CSV)</span></button>
+        </section>
+    </main>
+
+    <div id="loginModal" class="auth-modal" style="display:none"><div class="auth-dialog"><h2 data-i18n="login">Login</h2><label for="loginUsername" data-i18n="login_identifier">Username or email</label><input id="loginUsername" autocomplete="username"><label for="loginPassword" data-i18n="password">Password</label><input id="loginPassword" type="password" autocomplete="current-password"><button class="btn-primary" type="button" onclick="handleLogin()" data-i18n="login">Login</button><button class="btn-secondary" type="button" onclick="closeLoginModal()" data-i18n="cancel">Cancel</button></div></div>
+    <div id="registerModal" class="auth-modal" style="display:none"><div class="auth-dialog"><h2 data-i18n="register">Register</h2><label for="regUsername" data-i18n="username">Username</label><input id="regUsername" autocomplete="username"><label for="regEmail" data-i18n="email">Email</label><input id="regEmail" type="email" autocomplete="email"><label for="regFullName" data-i18n="full_name">Full name</label><input id="regFullName" autocomplete="name"><label for="regPassword" data-i18n="password">Password</label><input id="regPassword" type="password" autocomplete="new-password"><button class="btn-primary" type="button" onclick="handleRegister()" data-i18n="register">Register</button><button class="btn-secondary" type="button" onclick="closeRegisterModal()" data-i18n="cancel">Cancel</button></div></div>
+
+    <footer><div class="footer-bottom"><p>DiaryLens · SIH26111 · <span data-i18n="tools_footer_note">Local prototype; not a substitute for laboratory or veterinary advice.</span></p></div></footer>
+    <script src="js/languages.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/farm-tools.js"></script>
+</body>
+</html>
