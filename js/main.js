@@ -124,15 +124,6 @@ async function sendTestToBackend(testData) {
     return data;
 }
 
-function dashboardFilterQuery() {
-    const params = new URLSearchParams();
-    for (const [key, id] of [['date_from', 'dashboardDateFrom'], ['date_to', 'dashboardDateTo'], ['feed_type', 'dashboardFeedType']]) {
-        const value = getEl(id)?.value;
-        if (value) params.set(key, value);
-    }
-    return params.toString();
-}
-
 async function getTestsFromBackend(query = '') {
     const token = localStorage.getItem('authToken');
     if (!token) return null;
@@ -219,28 +210,28 @@ async function loadFarmDashboardSummary() {
     }
 }
 
-async function loadUserTests(query = dashboardFilterQuery()) {
+async function loadUserTests(query = '') {
     const message = getEl('dashboardDataMessage');
     if (!localStorage.getItem('authToken')) {
-        if (message) message.textContent = 'Sign in to view database-backed test metrics and history. Local simulations are not included in these statistics.';
+        if (message) message.textContent = 'Sign in with Login above to see your saved feed checks and farm records.';
         renderRecentTestsFromBackend([]);
         setTextIfPresent('recentReportsCount', '—');
         if (getEl('qualityChart')) getEl('qualityChart').hidden = true;
         if (getEl('qualityChartEmpty')) getEl('qualityChartEmpty').hidden = false;
         return;
     }
-    if (message) message.textContent = 'Loading saved test records…';
+    if (message) message.textContent = 'Loading your saved feed checks…';
     try {
         const [stats, tests] = await Promise.all([getDashboardStats(query), getTestsFromBackend(query)]);
         if (stats) {
             updateDashboardFromCloud(stats);
             if (message) message.textContent = stats.total_tests
-                ? `${stats.total_tests} saved test(s) match the selected filters.`
-                : 'No saved tests match these filters.';
+                ? `You have ${stats.total_tests} saved feed check${Number(stats.total_tests) === 1 ? '' : 's'}.`
+                : 'No saved feed checks yet. Start a check to see your results here.';
         }
         renderRecentTestsFromBackend(tests || []);
     } catch (error) {
-        if (message) message.textContent = error.message || 'Could not load saved tests.';
+        if (message) message.textContent = 'We could not load your saved feed checks. Please try again later.';
         console.error('Could not load dashboard records:', error);
     }
 }
@@ -259,15 +250,15 @@ function renderRecentTestsFromBackend(tests) {
         const statusClass = category === 'Good' ? 'status-good' : category === 'Moderate' ? 'status-warning' : ['Poor', 'Unsafe'].includes(category) ? 'status-danger' : '';
         const date = test.timestamp ? new Date(test.timestamp).toLocaleDateString() : '—';
         return `<tr>
-            <td data-label="Test ID">${escapeHTML(test.sample_id || `#${test.id}`)}</td>
+            <td data-label="Sample ID">${escapeHTML(test.sample_id || `#${test.id}`)}</td>
             <td data-label="Date">${escapeHTML(date)}</td>
-            <td data-label="Sample type">${escapeHTML(test.feed_type || '—')}</td>
-            <td data-label="Quality score">${test.quality_score == null ? '—' : `${escapeHTML(test.quality_score)} / 100`}</td>
-            <td data-label="Status"><span class="status ${statusClass}">${escapeHTML(category)}</span></td>
-            <td data-label="Report"><a class="table-link" href="reports.html?test_id=${encodeURIComponent(test.id)}">View report</a></td>
+            <td data-label="Feed type">${escapeHTML(test.feed_type || '—')}</td>
+            <td data-label="Score">${test.quality_score == null ? '—' : `${escapeHTML(test.quality_score)} / 100`}</td>
+            <td data-label="Result"><span class="status ${statusClass}">${escapeHTML(category)}</span></td>
+            <td data-label="Details"><a class="table-link" href="reports.html?test_id=${encodeURIComponent(test.id)}">View details</a></td>
         </tr>`;
     }).join('');
-    container.innerHTML = `<table class="history-table"><thead><tr><th>Test ID</th><th>Date</th><th>Sample type</th><th>Quality score</th><th>Status</th><th>Report</th></tr></thead><tbody>${rows}</tbody></table>`;
+    container.innerHTML = `<table class="history-table"><thead><tr><th>Sample ID</th><th>Date</th><th>Feed type</th><th>Score</th><th>Result</th><th>Details</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function setTextIfPresent(id, value) {
@@ -1220,13 +1211,6 @@ document.addEventListener('DOMContentLoaded', function() {
     checkAuthStatus();
     loadFarmDashboardSummary();
 
-    const applyDashboardFilters = getEl('applyDashboardFilters');
-    if (applyDashboardFilters) applyDashboardFilters.addEventListener('click', () => loadUserTests(dashboardFilterQuery()));
-    const clearDashboardFilters = getEl('clearDashboardFilters');
-    if (clearDashboardFilters) clearDashboardFilters.addEventListener('click', () => {
-        ['dashboardDateFrom', 'dashboardDateTo', 'dashboardFeedType'].forEach(id => { if (getEl(id)) getEl(id).value = ''; });
-        loadUserTests('');
-    });
     const applyReportFilters = getEl('applyReportFilters');
     if (applyReportFilters) applyReportFilters.addEventListener('click', loadSavedReports);
     if (getEl('reportRecords')) loadSavedReports();
